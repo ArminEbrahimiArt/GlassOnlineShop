@@ -1,0 +1,51 @@
+---
+/**
+ * Typographic wordmark (no logo exists yet — see docs/DECISIONS.md → ADR-005).
+ * Always set in Latin with Geist, in both locales, like most luxury houses.
+ */
+interface Props {
+  size?: 'sm' | 'md' | 'lg';
+  sub?: boolean;
+  class?: string;
+}
+const { size = 'md', sub = false, class: cls } = Astro.props;
+---
+
+<span class:list={['wordmark', `wordmark--${size}`, cls]} lang="en" dir="ltr">
+  <span class="wordmark__name">SLAZENGER</span>
+  {sub && <span class="wordmark__sub">EYEWEAR ATELIER</span>}
+</span>
+
+<style>
+  .wordmark {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    line-height: 1;
+    font-family: 'Geist Variable', sans-serif;
+  }
+  .wordmark__name {
+    font-weight: 500;
+    letter-spacing: 0.38em;
+    margin-inline-end: -0.38em; /* optical centring of tracked caps */
+  }
+  .wordmark__sub {
+    font-size: 0.5rem;
+    font-weight: 400;
+    letter-spacing: 0.42em;
+    margin-inline-end: -0.42em;
+    opacity: 0.6;
+  }
+  .wordmark--sm .wordmark__name {
+    font-size: 0.875rem;
+  }
+  .wordmark--md .wordmark__name {
+    font-size: clamp(0.95rem, 0.85rem + 0.4vw, 1.2rem);
+  }
+  .wordmark--lg .wordmark__name {
+    font-size: clamp(1.6rem, 1rem + 3vw, 3.4rem);
+    letter-spacing: 0.32em;
+    margin-inline-end: -0.32em;
+  }
+</style>

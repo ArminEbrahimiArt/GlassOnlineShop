@@ -1,0 +1,484 @@
+---
+/**
+ * Virtual Mirror — global <dialog>, opened by any [data-tryon-open] element
+ * (optionally with data-slug / data-colour). Logic: src/scripts/tryon.ts.
+ * The heavy MediaPipe runtime is only fetched when the camera is started.
+ */
+import Icon from './Icon.astro';
+import { useT, type Locale } from '@/i18n/utils';
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const t = useT(locale);
+---
+
+<dialog class="mirror" data-tryon aria-labelledby="mirror-title">
+  <div class="mirror__layout">
+    <div class="mirror__stage" data-stage data-state="idle">
+      <video class="mirror__media mirror__media--mirrored" data-video playsinline muted></video>
+      <canvas class="mirror__media" data-photo hidden></canvas>
+      <canvas class="mirror__media mirror__media--mirrored" data-overlay></canvas>
+      <img class="mirror__media" data-still alt="" hidden />
+
+      <div class="mirror__guide" aria-hidden="true">
+        <span class="mirror__oval"></span>
+        <span class="mirror__corner mirror__corner--tl"></span>
+        <span class="mirror__corner mirror__corner--tr"></span>
+        <span class="mirror__corner mirror__corner--bl"></span>
+        <span class="mirror__corner mirror__corner--br"></span>
+      </div>
+
+      <div class="mirror__intro" data-intro>
+        <Icon name="mirror" size={40} />
+        <p class="mirror__intro-title">{t('mirror.intro.title')}</p>
+        <p class="mirror__intro-body">{t('mirror.intro.body')}</p>
+        <button class="btn btn--light" type="button" data-start>
+          <Icon name="camera" />
+          {t('mirror.start')}
+        </button>
+        <label class="mirror__upload">
+          <input type="file" accept="image/*" data-upload hidden />
+          <Icon name="upload" size={16} />
+          <span>{t('mirror.upload')}</span>
+        </label>
+      </div>
+
+      <p class="mirror__status" data-status role="status" aria-live="polite"></p>
+
+      <div class="mirror__shutter">
+        <button class="mirror__capture" type="button" data-capture aria-label={t('mirror.capture')} disabled>
+          <span></span>
+        </button>
+        <button class="mirror__chip" type="button" data-retake hidden>
+          <Icon name="camera" size={16} />
+          {t('mirror.retake')}
+        </button>
+      </div>
+
+      <button class="mirror__close icon-btn" type="button" data-tryon-close aria-label={t('mirror.close')}>
+        <Icon name="close" />
+      </button>
+    </div>
+
+    <div class="mirror__panel">
+      <header class="mirror__head">
+        <h2 id="mirror-title" class="label">{t('mirror.title')}</h2>
+        <p class="muted mirror__sub">{t('mirror.subtitle')}</p>
+      </header>
+
+      <div class="mirror__product">
+        <div>
+          <p class="mirror__name" data-name></p>
+          <p class="muted mirror__colour" data-colour-name></p>
+        </div>
+        <p class="mirror__price" data-price></p>
+      </div>
+
+      <div class="mirror__colours" data-colours role="radiogroup" aria-label={t('common.colour')}></div>
+
+      <p class="label muted mirror__others">{t('mirror.others')}</p>
+      <div class="mirror__frames" data-frames role="listbox" aria-label={t('mirror.others')}></div>
+
+      <div class="mirror__actions">
+        <button class="btn btn--primary" type="button" data-buy>
+          <Icon name="bag" />
+          <span>{t('common.addToBag')}</span>
+        </button>
+        <button class="btn btn--ghost" type="button" data-save disabled>
+          <Icon name="download" />
+          {t('mirror.save')}
+        </button>
+      </div>
+      <p class="mirror__privacy muted"><Icon name="lock" size={14} /> {t('mirror.privacy')}</p>
+    </div>
+  </div>
+</dialog>
+
+<script>
+  import { initTryOn } from '@/scripts/tryon';
+  initTryOn();
+</script>
+
+<style>
+  .mirror {
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: var(--paper);
+    color: var(--ink);
+    display: none;
+    opacity: 0;
+    transform: translateY(24px);
+    transition:
+      opacity var(--dur) var(--ease-out),
+      transform var(--dur) var(--ease-out),
+      overlay var(--dur) allow-discrete,
+      display var(--dur) allow-discrete;
+  }
+  .mirror[open] {
+    display: block;
+    opacity: 1;
+    transform: none;
+  }
+  @starting-style {
+    .mirror[open] {
+      opacity: 0;
+      transform: translateY(24px);
+    }
+  }
+  .mirror::backdrop {
+    background: var(--scrim);
+    backdrop-filter: blur(6px);
+  }
+  .mirror__layout {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  /* ── Stage ── */
+  .mirror__stage {
+    position: relative;
+    flex: none;
+    height: min(64svh, 133vw);
+    background: #1a1918;
+    overflow: hidden;
+    isolation: isolate;
+  }
+  .mirror__media {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .mirror__media[hidden] {
+    display: none;
+  }
+  .mirror__media--mirrored {
+    transform: scaleX(-1);
+  }
+  [data-state='photo'] .mirror__media--mirrored {
+    transform: none;
+  }
+
+  .mirror__guide {
+    position: absolute;
+    inset: 12% 18%;
+    pointer-events: none;
+    transition: opacity var(--dur-slow) var(--ease-out);
+  }
+  [data-state='tracking'] .mirror__guide,
+  [data-state='still'] .mirror__guide,
+  [data-state='photo'] .mirror__guide {
+    opacity: 0;
+  }
+  .mirror__oval {
+    position: absolute;
+    inset: 4% 14%;
+    border: 1.5px solid rgb(255 255 255 / 0.85);
+    border-radius: 50%;
+  }
+  .mirror__corner {
+    position: absolute;
+    width: 22px;
+    height: 22px;
+    border: 0 solid rgb(255 255 255 / 0.85);
+  }
+  .mirror__corner--tl {
+    top: 0;
+    left: 0;
+    border-top-width: 1.5px;
+    border-left-width: 1.5px;
+  }
+  .mirror__corner--tr {
+    top: 0;
+    right: 0;
+    border-top-width: 1.5px;
+    border-right-width: 1.5px;
+  }
+  .mirror__corner--bl {
+    bottom: 0;
+    left: 0;
+    border-bottom-width: 1.5px;
+    border-left-width: 1.5px;
+  }
+  .mirror__corner--br {
+    bottom: 0;
+    right: 0;
+    border-bottom-width: 1.5px;
+    border-right-width: 1.5px;
+  }
+
+  .mirror__intro {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: var(--s-4);
+    padding: var(--s-6);
+    text-align: center;
+    color: var(--stone-100);
+    background:
+      radial-gradient(ellipse at 50% 40%, rgb(255 255 255 / 0.08), transparent 60%),
+      linear-gradient(180deg, #2a2826, #141312);
+    transition: opacity var(--dur) var(--ease-out);
+  }
+  [data-state]:not([data-state='idle']) .mirror__intro {
+    opacity: 0;
+    pointer-events: none;
+  }
+  .mirror__intro-title {
+    font-size: var(--text-xl);
+    letter-spacing: var(--tracking-tight);
+    line-height: 1.1;
+    color: var(--white);
+    max-width: 16ch;
+  }
+  .mirror__intro-body {
+    font-size: var(--text-sm);
+    max-width: 38ch;
+    color: var(--stone-300);
+    margin-block-end: var(--s-3);
+  }
+  .mirror__upload {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-2);
+    font-size: var(--text-sm);
+    color: var(--stone-300);
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
+
+  .mirror__status {
+    position: absolute;
+    top: var(--s-4);
+    inset-inline-start: var(--s-4);
+    padding: var(--s-1) var(--s-3);
+    border-radius: var(--radius-pill);
+    background: rgb(20 19 18 / 0.55);
+    backdrop-filter: blur(8px);
+    color: var(--white);
+    font-size: var(--text-xs);
+    max-width: calc(100% - 100px);
+  }
+  .mirror__status:empty {
+    display: none;
+  }
+
+  .mirror__shutter {
+    position: absolute;
+    inset-inline: 0;
+    bottom: var(--s-5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: var(--s-4);
+  }
+  .mirror__capture {
+    width: 68px;
+    height: 68px;
+    border-radius: 50%;
+    border: 3px solid var(--white);
+    display: grid;
+    place-items: center;
+    transition:
+      opacity var(--dur) var(--ease-out),
+      transform var(--dur-fast);
+  }
+  .mirror__capture span {
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    background: var(--white);
+    transition: transform var(--dur-fast) var(--ease-out);
+  }
+  .mirror__capture:active span {
+    transform: scale(0.88);
+  }
+  .mirror__capture:disabled {
+    opacity: 0;
+    pointer-events: none;
+  }
+  .mirror__capture[hidden],
+  .mirror__chip[hidden] {
+    display: none;
+  }
+  .mirror__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-2);
+    height: 40px;
+    padding-inline: var(--s-4);
+    border-radius: var(--radius-pill);
+    background: rgb(255 255 255 / 0.9);
+    color: var(--ink);
+    font-size: var(--text-sm);
+  }
+
+  .mirror__close {
+    position: absolute;
+    top: var(--s-3);
+    inset-inline-end: var(--s-3);
+    color: var(--white);
+    background: rgb(20 19 18 / 0.45);
+    backdrop-filter: blur(8px);
+  }
+  .mirror__close:hover {
+    background: rgb(20 19 18 / 0.7);
+  }
+
+  /* ── Panel ── */
+  .mirror__panel {
+    display: grid;
+    gap: var(--s-4);
+    align-content: start;
+    padding: var(--s-5) var(--gutter) calc(var(--s-5) + env(safe-area-inset-bottom));
+  }
+  .mirror__head {
+    display: none;
+  }
+  .mirror__product {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--s-4);
+  }
+  .mirror__name {
+    font-size: var(--text-xl);
+    font-weight: 500;
+    letter-spacing: var(--tracking-tight);
+    line-height: 1.1;
+  }
+  .mirror__colour {
+    font-size: var(--text-sm);
+  }
+  .mirror__price {
+    font-size: var(--text-sm);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .mirror__colours {
+    display: flex;
+    gap: var(--s-2);
+  }
+  .mirror__colours :global(button) {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid var(--line-strong);
+    outline: 1.5px solid transparent;
+    outline-offset: 3px;
+    transition: outline-color var(--dur-fast);
+  }
+  .mirror__colours :global(button[aria-checked='true']) {
+    outline-color: var(--ink);
+  }
+  .mirror__others {
+    margin-block-start: var(--s-2);
+  }
+  .mirror__frames {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(96px, 1fr);
+    gap: var(--s-2);
+    overflow-x: auto;
+    scrollbar-width: none;
+    margin-inline: calc(-1 * var(--gutter));
+    padding-inline: var(--gutter);
+  }
+  .mirror__frames :global(button) {
+    display: grid;
+    gap: var(--s-1);
+    justify-items: center;
+    padding: var(--s-3) var(--s-2) var(--s-2);
+    border-radius: var(--radius);
+    background: var(--stone-100);
+    border: 1px solid transparent;
+    font-size: var(--text-xs);
+    transition:
+      border-color var(--dur-fast),
+      background-color var(--dur-fast);
+  }
+  .mirror__frames :global(button[aria-selected='true']) {
+    border-color: var(--ink);
+    background: var(--stone-50);
+  }
+  .mirror__frames :global(img) {
+    width: 100%;
+    aspect-ratio: 5 / 2;
+    object-fit: contain;
+  }
+  .mirror__actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--s-2);
+    margin-block-start: var(--s-2);
+  }
+  .mirror__actions .btn {
+    padding-inline: var(--s-3);
+  }
+  .mirror__actions .btn:disabled {
+    opacity: 0.4;
+    pointer-events: none;
+  }
+  .mirror__privacy {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--s-2);
+    font-size: var(--text-xs);
+  }
+
+  @media (min-width: 900px) {
+    .mirror {
+      width: min(1120px, calc(100% - 4rem));
+      height: min(760px, calc(100% - 4rem));
+      margin: auto;
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-float);
+      overflow: hidden;
+    }
+    .mirror__layout {
+      flex-direction: row;
+      overflow: hidden;
+    }
+    .mirror__stage {
+      flex: 1.25;
+      height: 100%;
+    }
+    .mirror__panel {
+      flex: 1;
+      padding: var(--s-7) var(--s-6);
+      overflow-y: auto;
+      align-content: start;
+    }
+    .mirror__head {
+      display: block;
+      text-align: center;
+      padding-block-end: var(--s-5);
+      border-block-end: 1px solid var(--line);
+      margin-block-end: var(--s-3);
+    }
+    .mirror__sub {
+      font-size: var(--text-xs);
+      margin-block-start: var(--s-1);
+    }
+    .mirror__frames {
+      grid-auto-flow: row;
+      grid-template-columns: repeat(2, 1fr);
+      margin-inline: 0;
+      padding-inline: 0;
+    }
+  }
+</style>

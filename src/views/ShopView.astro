@@ -1,0 +1,228 @@
+---
+/**
+ * Shop / product listing. Filtering and sorting are client-side over the
+ * server-rendered cards (fine for a small catalogue; Phase 3 moves this to
+ * query params + API when the catalogue grows).
+ */
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import ProductCard from '@/components/ProductCard.astro';
+import Placeholder from '@/components/Placeholder.astro';
+import Icon from '@/components/Icon.astro';
+import { products } from '@/data/products';
+import { num, useT, type Locale } from '@/i18n/utils';
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const t = useT(locale);
+const filters = [
+  { id: 'all', label: t('shop.filter.all') },
+  { id: 'tone:black', label: t('shop.filter.black') },
+  { id: 'tone:clear', label: t('shop.filter.clear') },
+  { id: 'tone:tinted', label: t('shop.filter.tinted') },
+  { id: 'category:sun', label: t('shop.filter.sun') },
+  { id: 'category:optical', label: t('shop.filter.optical') },
+];
+---
+
+<BaseLayout locale={locale} title={t('shop.title')} page="shop">
+  <section class="shop container">
+    <header class="shop__head">
+      <h1 class="shop__title" data-reveal>{t('shop.title')}</h1>
+      <p class="muted" data-reveal><span data-count>{t('shop.count', { n: num(products.length, locale) })}</span></p>
+    </header>
+
+    <div class="shop__bar">
+      <div class="chips" role="toolbar" aria-label="Filter">
+        {
+          filters.map((f, i) => (
+            <button class="chip" type="button" data-filter={f.id} aria-pressed={i === 0 ? 'true' : 'false'}>
+              {f.label}
+            </button>
+          ))
+        }
+      </div>
+      <label class="sort">
+        <span class="label muted">{t('shop.sort')}</span>
+        <select data-sort>
+          <option value="featured">{t('shop.sort.featured')}</option>
+          <option value="asc">{t('shop.sort.priceAsc')}</option>
+          <option value="desc">{t('shop.sort.priceDesc')}</option>
+        </select>
+        <Icon name="chevronDown" size={14} />
+      </label>
+    </div>
+
+    <div class="grid" data-grid>
+      {products.map((p, i) => <ProductCard product={p} locale={locale} eager={i < 2} i={i} />)}
+      <article class="soon" data-reveal data-soon>
+        <Placeholder label={t('common.comingSoon')} caption="Monolith — A/W" variant="grid" tone="#e2ddd6" />
+        <div class="soon__text">
+          <p class="soon__title">{t('shop.soon.title')}</p>
+          <p class="muted">{t('shop.soon.body')}</p>
+        </div>
+      </article>
+    </div>
+    <p class="shop__empty muted" data-empty hidden>{t('shop.empty')}</p>
+  </section>
+</BaseLayout>
+
+<script>
+  const grid = document.querySelector<HTMLElement>('[data-grid]')!;
+  const cards = [...grid.querySelectorAll<HTMLElement>('.card')];
+  const chips = document.querySelectorAll<HTMLButtonElement>('[data-filter]');
+  const sort = document.querySelector<HTMLSelectElement>('[data-sort]')!;
+  const empty = document.querySelector<HTMLElement>('[data-empty]')!;
+  const soon = grid.querySelector<HTMLElement>('[data-soon]')!;
+  let filter = 'all';
+
+  function apply() {
+    const [key, val] = filter.split(':');
+    let visible = 0;
+    cards.forEach((c) => {
+      const show = filter === 'all' || c.dataset[key] === val;
+      c.hidden = !show;
+      if (show) visible++;
+    });
+    const order = [...cards];
+    if (sort.value !== 'featured') {
+      order.sort((a, b) => (Number(a.dataset.price) - Number(b.dataset.price)) * (sort.value === 'asc' ? 1 : -1));
+    }
+    order.forEach((c) => grid.insertBefore(c, soon));
+    empty.hidden = visible > 0;
+  }
+
+  chips.forEach((chip) =>
+    chip.addEventListener('click', () => {
+      filter = chip.dataset.filter!;
+      chips.forEach((c) => c.setAttribute('aria-pressed', String(c === chip)));
+      apply();
+    }),
+  );
+  sort.addEventListener('change', apply);
+</script>
+
+<style>
+  .shop {
+    padding-block-start: var(--s-7);
+  }
+  .shop__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: end;
+    gap: var(--s-4);
+    padding-block-end: var(--s-6);
+  }
+  .shop__title {
+    font-size: var(--text-3xl);
+    letter-spacing: -0.05em;
+  }
+  :lang(fa) .shop__title {
+    letter-spacing: 0;
+  }
+  .shop__bar {
+    position: sticky;
+    top: var(--header-h);
+    z-index: 10;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--s-4);
+    padding-block: var(--s-3);
+    margin-block-end: var(--s-5);
+    background: color-mix(in oklab, var(--paper) 92%, transparent);
+    backdrop-filter: blur(12px);
+    border-block-end: 1px solid var(--line);
+  }
+  .chips {
+    display: flex;
+    gap: var(--s-2);
+    overflow-x: auto;
+    scrollbar-width: none;
+    margin-inline: calc(-1 * var(--gutter));
+    padding-inline: var(--gutter);
+  }
+  .chips::-webkit-scrollbar {
+    display: none;
+  }
+  .chip {
+    flex: none;
+    height: 36px;
+    padding-inline: var(--s-4);
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--line-strong);
+    font-size: var(--text-sm);
+    transition:
+      background-color var(--dur-fast),
+      color var(--dur-fast),
+      border-color var(--dur-fast);
+  }
+  .chip:hover {
+    border-color: var(--ink);
+  }
+  .chip[aria-pressed='true'] {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: var(--paper);
+  }
+  .sort {
+    position: relative;
+    display: none;
+    align-items: center;
+    gap: var(--s-2);
+    flex: none;
+  }
+  .sort select {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    font-size: var(--text-sm);
+    padding-inline-end: 18px;
+    cursor: pointer;
+  }
+  .sort :global(svg) {
+    position: absolute;
+    inset-inline-end: 0;
+    pointer-events: none;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--s-7) var(--s-3);
+  }
+  .grid > :global([hidden]) {
+    display: none;
+  }
+  .soon {
+    display: grid;
+    gap: var(--s-3);
+    align-content: start;
+  }
+  .soon__title {
+    font-weight: 500;
+  }
+  .soon__text {
+    font-size: var(--text-sm);
+    padding-inline: var(--s-1);
+  }
+  .shop__empty {
+    padding-block: var(--s-8);
+    text-align: center;
+  }
+  @media (min-width: 768px) {
+    .sort {
+      display: inline-flex;
+    }
+    .chips {
+      margin-inline: 0;
+      padding-inline: 0;
+    }
+  }
+  @media (min-width: 1024px) {
+    .grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: var(--s-8) var(--s-4);
+    }
+  }
+</style>

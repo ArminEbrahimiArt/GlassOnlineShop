@@ -1,0 +1,656 @@
+---
+/**
+ * Product detail page.
+ * Mobile: swipe gallery → info → sticky buy bar appears once the main CTA
+ * scrolls away. Desktop: image mosaic (left) + sticky info column (right).
+ */
+import { Image } from 'astro:assets';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import Icon from '@/components/Icon.astro';
+import Hotspots from '@/components/Hotspots.astro';
+import Dimensions from '@/components/Dimensions.astro';
+import Placeholder from '@/components/Placeholder.astro';
+import ProductCard from '@/components/ProductCard.astro';
+import { related, sizeString, type Product } from '@/data/products';
+import { getCollection } from '@/data/collections';
+import { formatPrice, href, localDigits, num, pick, useT, type Locale } from '@/i18n/utils';
+
+interface Props {
+  product: Product;
+  locale: Locale;
+}
+const { product: p, locale } = Astro.props;
+const t = useT(locale);
+const name = pick(p.name, locale);
+const coll = getCollection(p.collection)!;
+const lifestyle = p.images.find((i) => i.kind === 'lifestyle');
+const detail = p.images.find((i) => i.kind === 'detail') ?? p.images[p.images.length - 1];
+const gallery = p.images;
+---
+
+<BaseLayout locale={locale} title={name} description={pick(p.description, locale)} page="product">
+  <div class="pdp" data-product-scope>
+    <!-- Gallery -->
+    <section class="pdp__gallery" aria-label={name}>
+      <div class="pdp__track" data-track>
+        {
+          gallery.map((img, i) => (
+            <figure class:list={['pdp__shot', `pdp__shot--${img.kind}`]} style={`--stage:${p.stage}`}>
+              <Image
+                src={img.src}
+                alt={pick(img.alt, locale)}
+                widths={[480, 800, 1200, 1600]}
+                sizes="(min-width: 1024px) 60vw, 100vw"
+                loading={i === 0 ? 'eager' : 'lazy'}
+                fetchpriority={i === 0 ? 'high' : 'auto'}
+                format="webp"
+                quality={84}
+              />
+            </figure>
+          ))
+        }
+      </div>
+      <div class="pdp__counter mono" aria-hidden="true">
+        <span data-counter>{num(1, locale)}</span> / {num(gallery.length, locale)}
+      </div>
+      <div class="pdp__dots" aria-hidden="true">
+        {gallery.map((_, i) => <span class:list={{ 'is-active': i === 0 }} data-dot={i} />)}
+      </div>
+    </section>
+
+    <!-- Info -->
+    <section class="pdp__info">
+      <div class="pdp__sticky">
+        <nav class="pdp__crumbs label muted" aria-label="Breadcrumb">
+          <a href={href('/shop', locale)}>{t('product.breadcrumb')}</a>
+          <span aria-hidden="true">/</span>
+          <a href={href('/collections', locale) + `#${coll.slug}`}>{pick(coll.name, locale)}</a>
+        </nav>
+
+        <div class="pdp__titles">
+          <h1 class="pdp__name">{name}</h1>
+          <p class="pdp__tagline">{pick(p.tagline, locale)}</p>
+        </div>
+
+        <div class="pdp__priceRow">
+          <p class="pdp__price">{formatPrice(p.price, locale)}</p>
+          <p class="mono muted">{p.code}</p>
+        </div>
+
+        <fieldset class="pdp__colours">
+          <legend class="label">
+            {t('common.colour')} — <span class="muted" data-colour-label>{pick(p.colourways[0].name, locale)}</span>
+          </legend>
+          <div class="pdp__swatches">
+            {
+              p.colourways.map((c, i) => (
+                <label class="swatch" title={pick(c.name, locale)}>
+                  <input type="radio" name="colour" value={c.id} checked={i === 0} data-name={pick(c.name, locale)} />
+                  <span class="swatch__dot" style={`background:${c.swatch}`} />
+                  <span class="visually-hidden">{pick(c.name, locale)}</span>
+                </label>
+              ))
+            }
+          </div>
+        </fieldset>
+
+        <div class="pdp__size">
+          <span class="label">{t('product.frameSize')}</span>
+          <span class="mono">{localDigits(sizeString(p), locale)}</span>
+        </div>
+
+        <div class="pdp__ctas" data-main-cta>
+          <button class="btn btn--primary btn--block" type="button" data-add-to-cart data-slug={p.slug}>
+            <Icon name="bag" />
+            {t('common.addToBag')}
+          </button>
+          <button class="btn btn--ghost btn--block" type="button" data-tryon-open data-slug={p.slug}>
+            <Icon name="mirror" />
+            {t('common.tryOn')}
+          </button>
+        </div>
+
+        <ul class="pdp__assure" role="list">
+          <li><Icon name="check" size={16} /> {t('product.inStock')}</li>
+          <li><Icon name="sparkle" size={16} /> {t('product.handmade', { n: num(p.hours, locale) })} · {t('common.limited')} {t('common.pieces', { n: num(p.run, locale) })}</li>
+        </ul>
+
+        <p class="pdp__desc">{pick(p.description, locale)}</p>
+
+        <div class="acc">
+          <details open>
+            <summary>{t('product.acc.details')}<Icon name="plus" size={16} /></summary>
+            <dl class="acc__dl">
+              <div><dt class="muted">{t('product.material')}</dt><dd>{pick(p.material, locale)}</dd></div>
+              <div><dt class="muted">{t('product.lens')}</dt><dd>{pick(p.lens, locale)}</dd></div>
+              <div><dt class="muted">{t('product.weight')}</dt><dd>{localDigits(`${p.weight} g`, locale)}</dd></div>
+              <div><dt class="muted">{t('product.codeLabel')}</dt><dd class="mono">{p.code}</dd></div>
+            </dl>
+          </details>
+          <details>
+            <summary>{t('product.acc.fit')}<Icon name="plus" size={16} /></summary>
+            <p>{t('product.fitBody')}</p>
+          </details>
+          <details>
+            <summary>{t('product.acc.shipping')}<Icon name="plus" size={16} /></summary>
+            <p>{t('product.shippingBody')}</p>
+          </details>
+          <details>
+            <summary>{t('product.acc.care')}<Icon name="plus" size={16} /></summary>
+            <p>{t('product.careBody')}</p>
+          </details>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Anatomy -->
+  <section class="section container">
+    <div class="sec-head" data-reveal>
+      <p class="label muted">{t('product.craft.kicker')}</p>
+      <h2 class="sec-title">{t('product.craft.title')}</h2>
+    </div>
+    <div data-reveal>
+      <Hotspots image={p.anatomy.image} alt={pick(p.anatomy.alt, locale)} spots={p.anatomy.spots} locale={locale} id={`hs-${p.slug}`} />
+    </div>
+  </section>
+
+  <!-- Lifestyle + detail inset -->
+  <section class="life" data-reveal>
+    {
+      lifestyle ? (
+        <Image src={lifestyle.src} alt={pick(lifestyle.alt, locale)} widths={[640, 1000, 1600, 2000]} sizes="100vw" class="life__img" format="webp" />
+      ) : (
+        <Placeholder label={t('common.placeholder')} caption="Campaign / lifestyle" ratio="16 / 9" variant="arc" tone="#ddd7cf" class="life__ph" />
+      )
+    }
+    <div class="life__inset">
+      <Image src={detail.src} alt={pick(detail.alt, locale)} widths={[300, 500, 700]} sizes="(min-width: 1024px) 22vw, 40vw" format="webp" />
+    </div>
+  </section>
+
+  <!-- Measurements -->
+  <section class="section container">
+    <div class="sec-head" data-reveal>
+      <p class="label muted">{t('product.dims.kicker')}</p>
+      <h2 class="sec-title">{t('product.dims.title')}</h2>
+    </div>
+    <div data-reveal>
+      <Dimensions product={p} locale={locale} />
+    </div>
+  </section>
+
+  <!-- Try-on banner -->
+  <section class="container">
+    <div class="tryband" data-reveal>
+      <div>
+        <p class="label tryband__k">{t('mirror.title')}</p>
+        <p class="tryband__t">{t('product.tryOnCta')}</p>
+      </div>
+      <button class="btn btn--light" type="button" data-tryon-open data-slug={p.slug} data-autostart>
+        <Icon name="camera" />
+        {t('home.mirror.cta')}
+      </button>
+    </div>
+  </section>
+
+  <!-- Related -->
+  <section class="section container">
+    <div class="sec-head sec-head--row" data-reveal>
+      <h2 class="sec-title">{t('product.related')}</h2>
+      <a class="link label nowrap" href={href('/shop', locale)}>{t('common.viewAll')}</a>
+    </div>
+    <div class="related">
+      {related(p.slug).map((r, i) => <ProductCard product={r} locale={locale} i={i} />)}
+    </div>
+  </section>
+
+  <!-- Mobile sticky buy bar -->
+  <div class="buybar" data-buybar aria-hidden="true" data-product-scope>
+    <div class="buybar__info">
+      <p class="buybar__name">{name}</p>
+      <p class="buybar__price">{formatPrice(p.price, locale)}</p>
+    </div>
+    <button class="icon-btn buybar__try" type="button" data-tryon-open data-slug={p.slug} tabindex="-1" aria-label={t('common.tryOn')}>
+      <Icon name="mirror" />
+    </button>
+    <button class="btn btn--light buybar__btn" type="button" data-add-to-cart data-slug={p.slug} data-buybar-add tabindex="-1">
+      {t('common.addToBag')}
+    </button>
+  </div>
+</BaseLayout>
+
+<script>
+  // Gallery counter + dots (mobile swipe track)
+  const track = document.querySelector<HTMLElement>('[data-track]');
+  if (track) {
+    const shots = [...track.children] as HTMLElement[];
+    const counter = document.querySelector('[data-counter]');
+    const dots = document.querySelectorAll<HTMLElement>('[data-dot]');
+    const fmt = new Intl.NumberFormat(document.documentElement.lang === 'fa' ? 'fa-IR' : 'en-US');
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting && e.intersectionRatio > 0.6) {
+            const i = shots.indexOf(e.target as HTMLElement);
+            if (counter) counter.textContent = fmt.format(i + 1);
+            dots.forEach((d, k) => d.classList.toggle('is-active', k === i));
+          }
+        }
+      },
+      { root: track, threshold: [0.6] },
+    );
+    shots.forEach((s) => io.observe(s));
+  }
+
+  // Colour swatches → label, measurement render, and keep buy bar in sync
+  const radios = document.querySelectorAll<HTMLInputElement>('input[name="colour"]');
+  const label = document.querySelector('[data-colour-label]');
+  radios.forEach((r) =>
+    r.addEventListener('change', () => {
+      if (label) label.textContent = r.dataset.name ?? '';
+      document.querySelectorAll<HTMLElement>('[data-frame-for]').forEach((el) => (el.hidden = el.dataset.frameFor !== r.value));
+      document.querySelectorAll<HTMLElement>('[data-buybar-add], [data-buybar] [data-tryon-open]').forEach((b) => (b.dataset.colour = r.value));
+    }),
+  );
+
+  // Sticky buy bar: visible once the main CTA has scrolled out of view
+  const cta = document.querySelector('[data-main-cta]');
+  const bar = document.querySelector<HTMLElement>('[data-buybar]');
+  if (cta && bar) {
+    let shown = false;
+    const update = () => {
+      const show = cta.getBoundingClientRect().bottom < 0;
+      if (show === shown) return;
+      shown = show;
+      bar.classList.toggle('is-on', show);
+      bar.setAttribute('aria-hidden', String(!show));
+      bar.querySelectorAll('button').forEach((b) => (b.tabIndex = show ? 0 : -1));
+    };
+    window.addEventListener('scroll', update, { passive: true });
+    update();
+  }
+</script>
+
+<style>
+  .pdp {
+    display: grid;
+  }
+
+  /* ── Gallery ── */
+  .pdp__gallery {
+    position: relative;
+  }
+  .pdp__track {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 100%;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+  }
+  .pdp__track::-webkit-scrollbar {
+    display: none;
+  }
+  .pdp__shot {
+    scroll-snap-align: start;
+    aspect-ratio: 4 / 5;
+    background: var(--stage);
+    overflow: hidden;
+  }
+  .pdp__shot img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .pdp__counter {
+    position: absolute;
+    top: var(--s-4);
+    inset-inline-end: var(--s-4);
+    padding: 4px 10px;
+    border-radius: var(--radius-pill);
+    background: rgb(255 255 255 / 0.8);
+    backdrop-filter: blur(6px);
+  }
+  .pdp__dots {
+    position: absolute;
+    bottom: var(--s-4);
+    inset-inline: 0;
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+  }
+  .pdp__dots span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgb(20 19 18 / 0.25);
+    transition:
+      width var(--dur) var(--ease-out),
+      background-color var(--dur);
+  }
+  .pdp__dots span.is-active {
+    width: 20px;
+    border-radius: 3px;
+    background: var(--ink);
+  }
+
+  /* ── Info ── */
+  .pdp__info {
+    padding: var(--s-5) var(--gutter) 0;
+  }
+  .pdp__sticky {
+    display: grid;
+    gap: var(--s-5);
+  }
+  .pdp__crumbs {
+    display: flex;
+    gap: var(--s-2);
+  }
+  .pdp__crumbs a:hover {
+    color: var(--ink);
+  }
+  .pdp__name {
+    font-size: var(--text-3xl);
+    line-height: 0.92;
+    letter-spacing: -0.05em;
+  }
+  :lang(fa) .pdp__name {
+    line-height: 1.25;
+    letter-spacing: 0;
+  }
+  .pdp__tagline {
+    font-size: var(--text-lg);
+    color: var(--stone-600);
+    margin-block-start: var(--s-2);
+  }
+  .pdp__priceRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding-block: var(--s-4);
+    border-block: 1px solid var(--line);
+  }
+  .pdp__price {
+    font-size: var(--text-lg);
+    font-weight: 500;
+    letter-spacing: var(--tracking-snug);
+  }
+  .pdp__colours {
+    border: 0;
+    padding: 0;
+    display: grid;
+    gap: var(--s-3);
+  }
+  .pdp__swatches {
+    display: flex;
+    gap: var(--s-3);
+  }
+  .swatch {
+    cursor: pointer;
+  }
+  .swatch input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .swatch__dot {
+    display: block;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 1px var(--line);
+    outline: 1.5px solid transparent;
+    outline-offset: 3px;
+    transition: outline-color var(--dur-fast);
+  }
+  .swatch input:checked + .swatch__dot {
+    outline-color: var(--ink);
+  }
+  .swatch input:focus-visible + .swatch__dot {
+    outline-color: var(--nude-500);
+  }
+  .pdp__size {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .pdp__ctas {
+    display: grid;
+    gap: var(--s-2);
+  }
+  .pdp__assure {
+    display: grid;
+    gap: var(--s-2);
+    font-size: var(--text-sm);
+    color: var(--stone-600);
+  }
+  .pdp__assure li {
+    display: flex;
+    gap: var(--s-2);
+    align-items: center;
+  }
+  .pdp__desc {
+    font-size: var(--text-md);
+    line-height: 1.6;
+  }
+
+  .acc {
+    border-block-start: 1px solid var(--line);
+  }
+  .acc details {
+    border-block-end: 1px solid var(--line);
+  }
+  .acc summary {
+    list-style: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-block: var(--s-4);
+    cursor: pointer;
+    font-weight: 500;
+  }
+  .acc summary::-webkit-details-marker {
+    display: none;
+  }
+  .acc summary :global(svg) {
+    transition: transform var(--dur) var(--ease-out);
+  }
+  .acc details[open] summary :global(svg) {
+    transform: rotate(45deg);
+  }
+  .acc details > :not(summary) {
+    padding-block-end: var(--s-5);
+    font-size: var(--text-sm);
+    color: var(--stone-600);
+  }
+  .acc__dl {
+    display: grid;
+    gap: var(--s-2);
+  }
+  .acc__dl div {
+    display: grid;
+    grid-template-columns: 7rem 1fr;
+    gap: var(--s-3);
+  }
+  .acc__dl dd {
+    color: var(--ink);
+  }
+
+  @media (min-width: 1024px) {
+    .pdp {
+      grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+      max-width: var(--max);
+      margin-inline: auto;
+      padding-inline: var(--gutter);
+      gap: var(--s-8);
+      padding-block-start: var(--s-5);
+    }
+    .pdp__track {
+      grid-auto-flow: row;
+      grid-auto-columns: auto;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--s-2);
+      overflow: visible;
+    }
+    .pdp__shot {
+      border-radius: var(--radius);
+    }
+    .pdp__shot:first-child,
+    .pdp__shot:last-child:nth-child(even) {
+      grid-column: 1 / -1;
+      aspect-ratio: 5 / 4;
+    }
+    .pdp__counter,
+    .pdp__dots {
+      display: none;
+    }
+    .pdp__info {
+      padding: 0;
+    }
+    .pdp__sticky {
+      position: sticky;
+      top: calc(var(--header-h) + var(--s-5));
+      padding-block-end: var(--s-7);
+    }
+  }
+
+  /* ── Shared section heads (same as home) ── */
+  .sec-head {
+    display: grid;
+    gap: var(--s-3);
+    margin-block-end: var(--s-7);
+    max-width: 40rem;
+  }
+  .sec-head--row {
+    max-width: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: end;
+  }
+  .sec-title {
+    font-size: var(--text-2xl);
+  }
+
+  /* ── Lifestyle ── */
+  .life {
+    position: relative;
+  }
+  .life__img {
+    width: 100%;
+    height: min(90svh, 900px);
+    object-fit: cover;
+    object-position: 50% 30%;
+  }
+  .life :global(.life__ph) {
+    border-radius: 0;
+    aspect-ratio: auto;
+    height: min(70svh, 760px);
+  }
+  .life__inset {
+    position: absolute;
+    inset-inline-end: var(--gutter);
+    bottom: var(--gutter);
+    width: clamp(120px, 28vw, 340px);
+    aspect-ratio: 3 / 4;
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 6px solid var(--paper);
+    box-shadow: var(--shadow-float);
+  }
+  .life__inset img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* ── Try-on band ── */
+  .tryband {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--s-5);
+    padding: var(--s-7) var(--s-6);
+    border-radius: var(--radius-lg);
+    background: var(--ink);
+    color: var(--paper);
+  }
+  .tryband__k {
+    color: var(--nude-300);
+    margin-block-end: var(--s-2);
+  }
+  .tryband__t {
+    font-size: var(--text-xl);
+    letter-spacing: var(--tracking-tight);
+    line-height: 1.15;
+  }
+
+  .related {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--s-6) var(--s-3);
+  }
+  .related > :global(:nth-child(3)) {
+    display: none;
+  }
+  @media (min-width: 1024px) {
+    .related {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: var(--s-6) var(--s-4);
+    }
+    .related > :global(:nth-child(3)) {
+      display: block;
+    }
+  }
+
+  /* ── Mobile buy bar ── */
+  .buybar {
+    position: fixed;
+    z-index: 40;
+    inset-inline: var(--s-3);
+    bottom: calc(var(--s-3) + env(safe-area-inset-bottom));
+    display: flex;
+    align-items: center;
+    gap: var(--s-2);
+    padding: var(--s-2) var(--s-2) var(--s-2) var(--s-5);
+    padding-inline: var(--s-5) var(--s-2);
+    border-radius: var(--radius-pill);
+    background: var(--ink);
+    color: var(--paper);
+    box-shadow: var(--shadow-float);
+    transform: translateY(140%);
+    transition: transform var(--dur) var(--ease-out);
+  }
+  .buybar.is-on {
+    transform: none;
+  }
+  .buybar__info {
+    flex: 1;
+    min-width: 0;
+    line-height: 1.25;
+  }
+  .buybar__name {
+    font-weight: 500;
+  }
+  .buybar__price {
+    font-size: var(--text-xs);
+    color: var(--stone-400);
+  }
+  .buybar__try {
+    color: var(--paper);
+  }
+  .buybar__try:hover {
+    background: rgb(255 255 255 / 0.1);
+  }
+  .buybar__btn {
+    --btn-h: 46px;
+    padding-inline: var(--s-5);
+  }
+  @media (min-width: 1024px) {
+    .buybar {
+      display: none;
+    }
+  }
+</style>

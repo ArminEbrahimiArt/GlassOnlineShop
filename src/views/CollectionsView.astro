@@ -1,0 +1,161 @@
+---
+import { Image } from 'astro:assets';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import Placeholder from '@/components/Placeholder.astro';
+import Icon from '@/components/Icon.astro';
+import { collections } from '@/data/collections';
+import { products } from '@/data/products';
+import { formatPrice, href, num, pick, useT, type Locale } from '@/i18n/utils';
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const t = useT(locale);
+const n2 = (i: number) => num(i, locale).padStart(2, locale === 'fa' ? '۰' : '0');
+---
+
+<BaseLayout locale={locale} title={t('collections.title')} page="collections">
+  <section class="head container">
+    <h1 class="head__title" data-reveal>{t('collections.title')}</h1>
+    <p class="lede muted" data-reveal>{t('collections.lede')}</p>
+  </section>
+
+  {
+    collections.map((c, i) => {
+      const items = products.filter((p) => p.collection === c.slug);
+      return (
+        <section class="coll container" id={c.slug}>
+          <div class="coll__head" data-reveal>
+            <span class="mono muted">{n2(i + 1)}</span>
+            <div>
+              <p class="label muted">{pick(c.season, locale)}</p>
+              <h2 class="coll__name">{pick(c.name, locale)}</h2>
+            </div>
+            <p class="coll__story muted">{pick(c.story, locale)}</p>
+          </div>
+          <div class="coll__grid">
+            {items.length ? (
+              items.map((p, k) => (
+                <a class="mini" href={href(`/product/${p.slug}`, locale)} data-reveal style={`--reveal-i:${k}`}>
+                  <div class="mini__img" style={`background:${p.stage}`}>
+                    <Image src={p.images[0].src} alt={pick(p.images[0].alt, locale)} widths={[400, 700, 1000]} sizes="(min-width: 900px) 33vw, 100vw" format="webp" />
+                  </div>
+                  <div class="mini__row">
+                    <span class="mini__name">{pick(p.name, locale)}</span>
+                    <span class="muted mini__price">{formatPrice(p.price, locale)}</span>
+                  </div>
+                </a>
+              ))
+            ) : (
+              <div class="coll__soon" data-reveal>
+                <Placeholder label={t('common.comingSoon')} caption={t('common.placeholder')} tone={c.tone} variant="grid" ratio="16 / 7" />
+              </div>
+            )}
+            {items.length > 0 && (
+              <div class="coll__ph" data-reveal>
+                <Placeholder label={`${pick(c.name, locale)} — campaign`} caption={t('common.placeholder')} tone={c.tone} variant="arc" />
+              </div>
+            )}
+          </div>
+          {items.length > 0 && (
+            <a class="link label coll__cta" href={href('/shop', locale)}>
+              {t('common.explore')} {pick(c.name, locale)} <Icon name="arrow" size={14} flip />
+            </a>
+          )}
+        </section>
+      );
+    })
+  }
+</BaseLayout>
+
+<style>
+  .head {
+    display: grid;
+    gap: var(--s-4);
+    padding-block: var(--s-7) var(--s-6);
+    max-width: var(--max);
+  }
+  .head__title {
+    font-size: var(--text-display);
+    line-height: 0.88;
+    letter-spacing: -0.055em;
+  }
+  :lang(fa) .head__title {
+    line-height: 1.2;
+    letter-spacing: 0;
+  }
+  .head .lede {
+    max-width: 36ch;
+  }
+  .coll {
+    padding-block: var(--s-7);
+    border-block-start: 1px solid var(--line);
+    scroll-margin-top: var(--header-h);
+  }
+  .coll__head {
+    display: grid;
+    grid-template-columns: 3ch 1fr;
+    gap: var(--s-2) var(--s-4);
+    margin-block-end: var(--s-6);
+  }
+  .coll__story {
+    grid-column: 2;
+    max-width: 44ch;
+  }
+  .coll__name {
+    font-size: var(--text-2xl);
+  }
+  .coll__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+    gap: var(--s-4);
+  }
+  .coll__soon {
+    grid-column: 1 / -1;
+  }
+  .mini {
+    display: grid;
+    gap: var(--s-3);
+  }
+  .mini__img {
+    aspect-ratio: 4 / 5;
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .mini__img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 1.6s var(--ease-out);
+  }
+  .mini:hover img {
+    transform: scale(1.04);
+  }
+  .mini__row {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--s-3);
+  }
+  .mini__name {
+    font-weight: 500;
+  }
+  .mini__price {
+    font-size: var(--text-sm);
+  }
+  .coll__cta {
+    display: inline-flex;
+    gap: var(--s-2);
+    align-items: center;
+    margin-block-start: var(--s-5);
+  }
+  @media (min-width: 900px) {
+    .coll__head {
+      grid-template-columns: 3ch 1fr 1fr;
+      align-items: end;
+    }
+    .coll__story {
+      grid-column: 3;
+    }
+  }
+</style>

@@ -1,0 +1,201 @@
+---
+import Wordmark from './Wordmark.astro';
+import Icon from './Icon.astro';
+import { href, useT, num, type Locale } from '@/i18n/utils';
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const t = useT(locale);
+const year = num(new Date().getFullYear(), locale).replace(/[,٬]/g, '');
+
+const cols = [
+  {
+    title: t('footer.shop'),
+    links: [
+      [t('shop.title'), href('/shop', locale)],
+      [t('nav.collections'), href('/collections', locale)],
+      [t('nav.mirror'), href('/try-on', locale)],
+    ],
+  },
+  {
+    title: t('footer.house'),
+    links: [
+      [t('nav.atelier'), href('/atelier', locale)],
+      [t('footer.stores'), '#'],
+      [t('footer.contact'), '#'],
+    ],
+  },
+  {
+    title: t('footer.help'),
+    links: [
+      [t('footer.shipping'), '#'],
+      [t('footer.warranty'), '#'],
+      [t('footer.faq'), '#'],
+    ],
+  },
+];
+---
+
+<footer class="footer">
+  <div class="container">
+    <div class="footer__news" data-reveal>
+      <div>
+        <h2 class="footer__title">{t('home.news.title')}</h2>
+        <p class="muted">{t('home.news.body')}</p>
+      </div>
+      <form class="news" data-newsletter>
+        <label class="visually-hidden" for="news-email">{t('home.news.placeholder')}</label>
+        <input id="news-email" type="email" required placeholder={t('home.news.placeholder')} autocomplete="email" />
+        <button class="news__btn" type="submit" aria-label={t('home.news.cta')}>
+          <Icon name="arrow" flip />
+        </button>
+        <p class="news__thanks" data-newsletter-thanks hidden>{t('home.news.thanks')}</p>
+      </form>
+    </div>
+
+    <div class="footer__grid">
+      {
+        cols.map((c) => (
+          <div>
+            <p class="label muted">{c.title}</p>
+            <ul role="list">
+              {c.links.map(([label, url]) => (
+                <li>
+                  <a href={url}>{label}</a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))
+      }
+      <div>
+        <p class="label muted">Social</p>
+        <ul role="list">
+          <li><a href="#">Instagram</a></li>
+          <li><a href="#">Telegram</a></li>
+          <li><a href="#">Pinterest</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer__mark" aria-hidden="true">
+      <Wordmark size="lg" sub />
+    </div>
+
+    <div class="footer__legal">
+      <p>{t('footer.rights', { y: year })}</p>
+      <p class="footer__legal-links">
+        <a href="#">{t('footer.terms')}</a>
+        <a href="#">{t('footer.privacy')}</a>
+        <span class="footer__proto">{t('footer.prototype')}</span>
+      </p>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .footer {
+    background: var(--stone-100);
+    border-block-start: 1px solid var(--line);
+    padding-block: var(--s-8) var(--s-5);
+    margin-block-start: var(--section);
+  }
+  .footer__news {
+    display: grid;
+    gap: var(--s-5);
+    padding-block-end: var(--s-8);
+    border-block-end: 1px solid var(--line);
+  }
+  .footer__title {
+    font-size: var(--text-2xl);
+    margin-block-end: var(--s-3);
+  }
+  .news {
+    position: relative;
+    align-self: end;
+    display: flex;
+    border-block-end: 1px solid var(--ink);
+  }
+  .news input {
+    flex: 1;
+    min-width: 0;
+    height: 56px;
+    border: 0;
+    background: transparent;
+    font-size: var(--text-md);
+    outline: none;
+  }
+  .news input::placeholder {
+    color: var(--stone-500);
+  }
+  .news__btn {
+    width: 56px;
+    display: grid;
+    place-items: center;
+  }
+  .news__thanks {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    background: var(--stone-100);
+    font-size: var(--text-md);
+  }
+  .news__thanks[hidden] {
+    display: none;
+  }
+  .footer__grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--s-6) var(--s-5);
+    padding-block: var(--s-7);
+  }
+  .footer__grid ul {
+    margin-block-start: var(--s-3);
+    display: grid;
+    gap: var(--s-2);
+  }
+  .footer__grid a {
+    font-size: var(--text-sm);
+    transition: color var(--dur-fast);
+  }
+  .footer__grid a:hover {
+    color: var(--nude-700);
+  }
+  .footer__mark {
+    display: grid;
+    place-items: center;
+    padding-block: var(--s-7);
+    color: var(--ink);
+    overflow: hidden;
+  }
+  .footer__legal {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: var(--s-3);
+    padding-block-start: var(--s-5);
+    border-block-start: 1px solid var(--line);
+    font-size: var(--text-xs);
+    color: var(--stone-600);
+  }
+  .footer__legal-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-5);
+  }
+  .footer__proto {
+    color: var(--nude-700);
+  }
+  @media (min-width: 900px) {
+    .footer__news {
+      grid-template-columns: 1fr 1fr;
+      gap: var(--s-9);
+    }
+    .footer__grid {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+</style>

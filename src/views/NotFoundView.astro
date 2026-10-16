@@ -1,0 +1,45 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { products } from '@/data/products';
+import { frameSVG } from '@/lib/frames';
+import { href, useT, type Locale } from '@/i18n/utils';
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const t = useT(locale);
+const p = products[2];
+---
+
+<BaseLayout locale={locale} title="404" page="404">
+  <section class="nf container">
+    <div class="nf__art" set:html={frameSVG(p.geometry, p.colourways[0].style, 'nf')} />
+    <p class="mono muted">404</p>
+    <h1 class="nf__title">{t('404.title')}</h1>
+    <a class="btn btn--primary" href={href('/', locale)}>{t('404.cta')}</a>
+  </section>
+</BaseLayout>
+
+<style>
+  .nf {
+    min-height: 70svh;
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: var(--s-5);
+    text-align: center;
+  }
+  .nf__art {
+    width: min(360px, 80vw);
+    transform: rotate(-8deg);
+  }
+  .nf__art :global(svg) {
+    width: 100%;
+    height: auto;
+  }
+  .nf__title {
+    font-size: var(--text-2xl);
+    max-width: 16ch;
+  }
+</style>

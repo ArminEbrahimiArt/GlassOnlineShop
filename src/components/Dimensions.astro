@@ -1,0 +1,164 @@
+---
+/**
+ * Technical front-view drawing with measurements (Kingsley Rowe reference).
+ * Uses the same parametric frame as the Virtual Mirror so they always agree.
+ * Colourway swatches on the product page swap the render via data-frame-for.
+ */
+import type { Product } from '@/data/products';
+import { frameSVG } from '@/lib/frames';
+import { localDigits, pick, useT, type Locale } from '@/i18n/utils';
+
+interface Props {
+  product: Product;
+  locale: Locale;
+}
+const { product: p, locale } = Astro.props;
+const t = useT(locale);
+const d = (n: number) => localDigits(String(n), locale);
+const renders = p.colourways.map((c) => ({ id: c.id, svg: frameSVG(p.geometry, c.style, `dim-${p.slug}-${c.id}`) }));
+---
+
+<div class="dims">
+  <div class="dims__drawing" dir="ltr">
+    <div class="dims__frame">
+      {renders.map((r, i) => <div class="dims__render" data-frame-for={r.id} hidden={i !== 0} set:html={r.svg} />)}
+    </div>
+    <!-- measurement lines (LTR drawing in both locales; labels localised) -->
+    <div class="dims__m dims__m--lens">
+      <span class="dims__line"></span><span class="mono">{d(p.size.lens)}</span>
+    </div>
+    <div class="dims__m dims__m--bridge">
+      <span class="dims__line"></span><span class="mono">{d(p.size.bridge)}</span>
+    </div>
+    <div class="dims__m dims__m--height">
+      <span class="dims__line"></span><span class="mono">{d(p.size.height)}</span>
+    </div>
+  </div>
+  <dl class="dims__table">
+    <div><dt class="label muted">{t('product.lensWidth')}</dt><dd>{d(p.size.lens)} <small>mm</small></dd></div>
+    <div><dt class="label muted">{t('product.bridge')}</dt><dd>{d(p.size.bridge)} <small>mm</small></dd></div>
+    <div><dt class="label muted">{t('product.temple')}</dt><dd>{d(p.size.temple)} <small>mm</small></dd></div>
+    <div><dt class="label muted">{t('product.height')}</dt><dd>{d(p.size.height)} <small>mm</small></dd></div>
+    <div><dt class="label muted">{t('product.weight')}</dt><dd>{d(p.weight)} <small>g</small></dd></div>
+    <div><dt class="label muted">{t('product.material')}</dt><dd class="dims__small">{pick(p.material, locale)}</dd></div>
+  </dl>
+</div>
+
+<style>
+  .dims {
+    display: grid;
+    gap: var(--s-7);
+  }
+  .dims__drawing {
+    position: relative;
+    padding: 18% 6% 8%;
+    background:
+      linear-gradient(var(--line) 1px, transparent 1px) 0 0 / 24px 24px,
+      linear-gradient(90deg, var(--line) 1px, transparent 1px) 0 0 / 24px 24px,
+      var(--stone-50);
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+  }
+  .dims__frame :global(svg) {
+    width: 100%;
+    height: auto;
+  }
+  .dims__render[hidden] {
+    display: none;
+  }
+  .dims__m {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--stone-600);
+  }
+  .dims__line {
+    position: relative;
+    display: block;
+    background: var(--stone-500);
+  }
+  /* Horizontal measures sit above the frame (frame spans 6%–94% of width). */
+  .dims__m--lens,
+  .dims__m--bridge {
+    top: 7%;
+    flex-direction: column;
+  }
+  .dims__m--lens {
+    left: calc(6% + 88% * 0.04);
+    width: calc(88% * 0.42);
+  }
+  .dims__m--bridge {
+    left: calc(6% + 88% * 0.455);
+    width: calc(88% * 0.09);
+  }
+  .dims__m--lens .dims__line,
+  .dims__m--bridge .dims__line {
+    width: 100%;
+    height: 1px;
+    order: 2;
+  }
+  .dims__m--lens .dims__line::before,
+  .dims__m--lens .dims__line::after,
+  .dims__m--bridge .dims__line::before,
+  .dims__m--bridge .dims__line::after {
+    content: '';
+    position: absolute;
+    top: -4px;
+    width: 1px;
+    height: 9px;
+    background: inherit;
+  }
+  .dims__line::after {
+    right: 0;
+  }
+  .dims__m--height {
+    right: 1.5%;
+    top: 30%;
+    height: 56%;
+    flex-direction: row-reverse;
+  }
+  .dims__m--height .dims__line {
+    width: 1px;
+    height: 100%;
+  }
+  .dims__m--height .dims__line::before,
+  .dims__m--height .dims__line::after {
+    content: '';
+    position: absolute;
+    left: -4px;
+    width: 9px;
+    height: 1px;
+    background: inherit;
+  }
+  .dims__m--height .dims__line::after {
+    bottom: 0;
+    right: auto;
+  }
+  .dims__table {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--s-5) var(--s-4);
+  }
+  .dims__table dd {
+    font-size: var(--text-xl);
+    letter-spacing: var(--tracking-tight);
+    margin-block-start: var(--s-1);
+  }
+  .dims__table small {
+    font-size: var(--text-xs);
+    color: var(--stone-600);
+    letter-spacing: 0;
+  }
+  .dims__table .dims__small {
+    font-size: var(--text-sm);
+    letter-spacing: 0;
+  }
+  @media (min-width: 1024px) {
+    .dims {
+      grid-template-columns: 1.6fr 1fr;
+      align-items: center;
+      gap: var(--s-8);
+    }
+  }
+</style>

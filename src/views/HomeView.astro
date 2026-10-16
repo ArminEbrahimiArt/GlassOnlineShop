@@ -1,0 +1,851 @@
+---
+import { Image } from 'astro:assets';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import Icon from '@/components/Icon.astro';
+import Hotspots from '@/components/Hotspots.astro';
+import Placeholder from '@/components/Placeholder.astro';
+import { products, getProduct } from '@/data/products';
+import { collections, getCollection } from '@/data/collections';
+import { process } from '@/data/editorial';
+import { formatPrice, href, num, pick, useT, type Locale } from '@/i18n/utils';
+
+import cristalloAngle from '@/assets/products/cristallo/angle.jpg';
+import notteAngle from '@/assets/products/notte/angle.jpg';
+import rosaStanding from '@/assets/products/rosa/standing.jpg';
+import womanPortrait from '@/assets/products/milano/portrait-woman.jpg';
+import heroA from '@/assets/products/milano/angle.jpg';
+import heroB from '@/assets/products/notte/still-life.jpg';
+import heroC from '@/assets/products/cristallo/float.jpg';
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const t = useT(locale);
+const n2 = (i: number) => num(i, locale).padStart(2, locale === 'fa' ? '۰' : '0');
+
+const slides = [
+  { img: heroA, product: getProduct('milano')!, pos: '50% 50%' },
+  { img: heroB, product: getProduct('notte')!, pos: '50% 60%' },
+  { img: heroC, product: getProduct('cristallo')!, pos: '50% 45%' },
+];
+const notte = getProduct('notte')!;
+const collectionImages: Record<string, typeof notteAngle> = {
+  riviera: cristalloAngle,
+  notturno: notteAngle,
+  atelier: rosaStanding,
+};
+---
+
+<BaseLayout locale={locale} overlayHeader page="home">
+  <!-- ── 1. Hero slider ─────────────────────────────────────────────── -->
+  <section class="hero" data-hero aria-roledescription="carousel" aria-label="Featured">
+    <div class="hero__media">
+    {
+      slides.map((s, i) => (
+        <div class:list={['hero__slide', { 'is-active': i === 0 }]} data-slide aria-hidden={i !== 0 ? 'true' : undefined}>
+          <Image
+            src={s.img}
+            alt={pick(s.product.images[0].alt, locale)}
+            widths={[640, 960, 1400, 2000]}
+            sizes="(min-width: 1024px) 60vw, 100vw"
+            loading={i === 0 ? 'eager' : 'lazy'}
+            fetchpriority={i === 0 ? 'high' : 'auto'}
+            class="hero__img"
+            style={`object-position:${s.pos}`}
+            format="webp"
+            quality={82}
+          />
+        </div>
+      ))
+    }
+    </div>
+
+    <div class="hero__content container">
+      <p class="label hero__kicker">{t('home.hero.kicker')}</p>
+      <h1 class="hero__title">
+        <span>{t('home.hero.title')}</span>
+        <span class="hero__title-2">{t('home.hero.title2')}</span>
+      </h1>
+      <div class="hero__ctas">
+        <a class="btn btn--primary" href={href('/shop', locale)}>
+          {t('home.hero.cta')}
+          <Icon name="arrow" flip />
+        </a>
+        <button class="btn btn--ghost hero__ghost" type="button" data-tryon-open>
+          <Icon name="mirror" />
+          {t('home.hero.cta2')}
+        </button>
+      </div>
+
+      <div class="hero__progress" role="tablist">
+        {
+          slides.map((s, i) => (
+            <button class:list={['hero__tab', { 'is-active': i === 0 }]} type="button" role="tab" data-tab={i} aria-selected={i === 0 ? 'true' : 'false'}>
+              <span class="hero__bar">
+                <span />
+              </span>
+              <span class="hero__tab-label">
+                <span class="mono">{n2(i + 1)}</span> {pick(s.product.name, locale)}
+              </span>
+            </button>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 2. Statement ────────────────────────────────────────────────── -->
+  <section class="statement section container">
+    <p class="label muted" data-reveal>{t('home.statement.kicker')}</p>
+    <p class="statement__text" data-reveal>
+      {
+        t('home.statement', { n: '§' })
+          .split('§')
+          .map((part, i) => (i === 0 ? part : [<span class="accent">{num(40, locale)}</span>, part]))
+      }
+    </p>
+  </section>
+
+  <!-- ── 3. Product scenes (one per screen) ──────────────────────────── -->
+  <section class="scenes" aria-labelledby="featured-title">
+    <div class="container scenes__head">
+      <p class="label muted" data-reveal>{t('home.featured.kicker')}</p>
+      <h2 id="featured-title" class="scenes__title" data-reveal>{t('home.featured.title')}</h2>
+    </div>
+
+    {
+      products.map((p, i) => (
+        <article class:list={['scene', { 'scene--flip': i % 2 === 1 }]} data-scene data-product-scope>
+          <div class="scene__inner container">
+            <div class="scene__gallery" data-reveal>
+              <div class="scene__main" style={`--stage:${p.stage}`} data-scene-track>
+                {p.images.map((img, j) => (
+                  <Image
+                    src={img.src}
+                    alt={pick(img.alt, locale)}
+                    widths={[480, 800, 1200, 1600]}
+                    sizes="(min-width: 1024px) 55vw, 100vw"
+                    class:list={['scene__img', { 'is-active': j === 0 }]}
+                    data-scene-img={j}
+                    loading="lazy"
+                    format="webp"
+                  />
+                ))}
+              </div>
+              {p.images.length > 1 && (
+                <div class="scene__thumbs" role="tablist" aria-label={pick(p.name, locale)}>
+                  {p.images.map((img, j) => (
+                    <button type="button" class:list={['scene__thumb', { 'is-active': j === 0 }]} data-scene-thumb={j} aria-label={pick(img.alt, locale)}>
+                      <Image src={img.src} alt="" width={120} height={120} format="webp" loading="lazy" />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div class="scene__info" data-reveal>
+              <p class="label muted">
+                <span class="mono">
+                  {n2(i + 1)} / {n2(products.length)}
+                </span>
+                &nbsp;·&nbsp;{pick(getCollection(p.collection)!.name, locale)}
+              </p>
+              <h3 class="scene__name">{pick(p.name, locale)}</h3>
+              <p class="scene__tagline">{pick(p.tagline, locale)}</p>
+              <p class="scene__price">{formatPrice(p.price, locale)}</p>
+              <div class="scene__actions">
+                <a class="icon-btn scene__circle" href={href(`/product/${p.slug}`, locale)} aria-label={t('common.details')}>
+                  <Icon name="info" />
+                </a>
+                <button class="btn btn--primary" type="button" data-add-to-cart data-slug={p.slug}>
+                  {t('common.buy')}
+                </button>
+                <button class="icon-btn scene__circle" type="button" data-tryon-open data-slug={p.slug} aria-label={t('common.tryOn')}>
+                  <Icon name="mirror" />
+                </button>
+              </div>
+              <a class="link label scene__more" href={href(`/product/${p.slug}`, locale)}>
+                {t('common.discover')}
+              </a>
+            </div>
+          </div>
+        </article>
+      ))
+    }
+  </section>
+
+  <!-- ── 4. Anatomy / hotspots ───────────────────────────────────────── -->
+  <section class="section container">
+    <div class="sec-head" data-reveal>
+      <p class="label muted">{t('home.craft.kicker')}</p>
+      <h2 class="sec-title">{t('home.craft.title')}</h2>
+      <p class="muted">{t('home.craft.body')}</p>
+    </div>
+    <div data-reveal>
+      <Hotspots image={notte.anatomy.image} alt={pick(notte.anatomy.alt, locale)} spots={notte.anatomy.spots} locale={locale} id="home-hs" />
+    </div>
+  </section>
+
+  <!-- ── 5. Virtual Mirror CTA ───────────────────────────────────────── -->
+  <section class="mirror-cta">
+    <div class="container mirror-cta__inner">
+      <div class="mirror-cta__visual" data-reveal>
+        <Image src={womanPortrait} alt="" widths={[480, 800, 1100]} sizes="(min-width: 900px) 40vw, 100vw" class="mirror-cta__img" format="webp" />
+        <div class="mirror-cta__ui" aria-hidden="true">
+          <span class="mirror-cta__corner"></span><span class="mirror-cta__corner"></span><span class="mirror-cta__corner"></span><span class="mirror-cta__corner"></span>
+          <span class="mirror-cta__scan"></span>
+          <span class="mirror-cta__chip label">● LIVE · 478 pts</span>
+        </div>
+      </div>
+      <div class="mirror-cta__text" data-reveal>
+        <p class="label mirror-cta__kicker">{t('home.mirror.kicker')}</p>
+        <h2 class="sec-title">{t('home.mirror.title')}</h2>
+        <p class="mirror-cta__body">{t('home.mirror.body')}</p>
+        <div class="mirror-cta__actions">
+          <button class="btn btn--light" type="button" data-tryon-open data-autostart>
+            <Icon name="camera" />
+            {t('home.mirror.cta')}
+          </button>
+        </div>
+        <p class="mirror-cta__note"><Icon name="lock" size={14} /> {t('home.mirror.note')}</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 6. Collections rail ─────────────────────────────────────────── -->
+  <section class="section">
+    <div class="container sec-head sec-head--row" data-reveal>
+      <div>
+        <p class="label muted">{t('home.collections.kicker')}</p>
+        <h2 class="sec-title">{t('home.collections.title')}</h2>
+      </div>
+      <a class="link label nowrap" href={href('/collections', locale)}>{t('common.viewAll')}</a>
+    </div>
+    <ul class="rail" role="list">
+      {
+        collections.map((c, i) => (
+          <li class="rail__item" data-reveal style={`--reveal-i:${i}`}>
+            <a href={href('/collections', locale) + `#${c.slug}`} class="coll">
+              {collectionImages[c.slug] ? (
+                <div class="coll__media">
+                  <Image src={collectionImages[c.slug]} alt="" widths={[400, 700, 1000]} sizes="(min-width: 1024px) 30vw, 80vw" class="coll__img" format="webp" />
+                </div>
+              ) : (
+                <Placeholder label={t('common.comingSoon')} caption={t('common.placeholder')} tone={c.tone} variant="arc" ratio="4 / 5" />
+              )}
+              <div class="coll__info">
+                <p class="label muted">{pick(c.season, locale)}</p>
+                <h3 class="coll__name">{pick(c.name, locale)}</h3>
+                <p class="coll__story muted">{pick(c.story, locale)}</p>
+              </div>
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </section>
+
+  <!-- ── 7. Atelier teaser ───────────────────────────────────────────── -->
+  <section class="section container atelier">
+    <div class="atelier__media" data-reveal>
+      <Placeholder label={t('nav.atelier')} caption={t('common.placeholder')} variant="lines" ratio="4 / 5" tone="#e3ddd4" />
+    </div>
+    <div class="atelier__text" data-reveal>
+      <p class="label muted">{t('home.atelier.kicker')}</p>
+      <h2 class="sec-title">{t('home.atelier.title')}</h2>
+      <ol class="atelier__steps" role="list">
+        {
+          process.slice(0, 4).map((s) => (
+            <li>
+              <span class="mono muted">{locale === 'fa' ? num(Number(s.n), 'fa').padStart(2, '۰') : s.n}</span>
+              <div>
+                <p class="atelier__step-title">{pick(s.title, locale)}</p>
+                <p class="muted">{pick(s.body, locale)}</p>
+              </div>
+            </li>
+          ))
+        }
+      </ol>
+      <a class="btn btn--ghost" href={href('/atelier', locale)}>
+        {t('home.atelier.cta')}
+        <Icon name="arrow" flip />
+      </a>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  /* Hero: auto-advancing crossfade with progress bars, swipe on touch. */
+  const hero = document.querySelector<HTMLElement>('[data-hero]');
+  if (hero) {
+    const slides = [...hero.querySelectorAll<HTMLElement>('[data-slide]')];
+    const tabs = [...hero.querySelectorAll<HTMLElement>('[data-tab]')];
+    const DURATION = 6500;
+    let i = 0;
+    let timer = 0;
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const go = (n: number) => {
+      i = (n + slides.length) % slides.length;
+      slides.forEach((s, k) => {
+        s.classList.toggle('is-active', k === i);
+        s.toggleAttribute('aria-hidden', k !== i);
+      });
+      tabs.forEach((t, k) => {
+        t.classList.remove('is-active');
+        t.setAttribute('aria-selected', String(k === i));
+      });
+      void tabs[i].offsetWidth; // restart the CSS progress animation
+      tabs[i].classList.add('is-active');
+      clearTimeout(timer);
+      if (!reduce) timer = window.setTimeout(() => go(i + 1), DURATION);
+    };
+    hero.style.setProperty('--hero-dur', `${DURATION}ms`);
+    tabs.forEach((t, k) => t.addEventListener('click', () => go(k)));
+    let x0: number | null = null;
+    hero.addEventListener('touchstart', (e) => (x0 = e.touches[0].clientX), { passive: true });
+    hero.addEventListener('touchend', (e) => {
+      if (x0 === null) return;
+      const dx = e.changedTouches[0].clientX - x0;
+      const rtl = document.documentElement.dir === 'rtl';
+      if (Math.abs(dx) > 50) go(i + ((dx < 0) !== rtl ? 1 : -1));
+      x0 = null;
+    });
+    go(0);
+  }
+
+  /* Scenes: thumbnails swap the main image (hover on desktop, tap on touch);
+     on mobile the main stage is a horizontal swipe track. */
+  document.querySelectorAll<HTMLElement>('[data-scene]').forEach((scene) => {
+    const imgs = scene.querySelectorAll<HTMLElement>('[data-scene-img]');
+    const thumbs = scene.querySelectorAll<HTMLElement>('[data-scene-thumb]');
+    const show = (n: number) => {
+      imgs.forEach((im, k) => im.classList.toggle('is-active', k === n));
+      thumbs.forEach((t, k) => t.classList.toggle('is-active', k === n));
+    };
+    thumbs.forEach((t, k) => {
+      t.addEventListener('mouseenter', () => show(k));
+      t.addEventListener('click', () => show(k));
+    });
+  });
+</script>
+
+<style>
+  /* ── Hero ──
+     Mobile: image on top (portrait crop), copy below on paper.
+     Desktop: copy column + full-height image column (no awkward landscape crop). */
+  .hero {
+    position: relative;
+    display: grid;
+    grid-template-rows: auto auto;
+    background: var(--paper);
+  }
+  .hero__media {
+    position: relative;
+    height: 62svh;
+    min-height: 380px;
+    overflow: hidden;
+    background: var(--stone-200);
+  }
+  .hero__slide {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 1.4s var(--ease-in-out);
+  }
+  .hero__slide.is-active {
+    opacity: 1;
+  }
+  .hero__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scale(1.08);
+    transition: transform 8s linear;
+  }
+  .hero__slide.is-active .hero__img {
+    transform: scale(1);
+  }
+  .hero__content {
+    display: grid;
+    gap: var(--s-4);
+    padding-block: var(--s-6) var(--s-4);
+  }
+  .hero__title {
+    font-size: var(--text-3xl);
+    line-height: 0.95;
+    letter-spacing: -0.045em;
+    display: grid;
+  }
+  :lang(fa) .hero__title {
+    line-height: 1.3;
+    letter-spacing: 0;
+  }
+  .hero__title-2 {
+    color: var(--stone-500);
+  }
+  .hero__ctas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-2);
+    margin-block-start: var(--s-2);
+  }
+  .hero__progress {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--s-3);
+    margin-block-start: var(--s-4);
+  }
+  .hero__tab {
+    display: grid;
+    gap: var(--s-2);
+    text-align: start;
+    padding-block: var(--s-2);
+  }
+  .hero__bar {
+    position: relative;
+    height: 2px;
+    background: var(--line-strong);
+    overflow: hidden;
+    border-radius: 2px;
+  }
+  .hero__bar span {
+    position: absolute;
+    inset: 0;
+    background: var(--ink);
+    transform: scaleX(0);
+    transform-origin: left;
+  }
+  :global([dir='rtl']) .hero__bar span {
+    transform-origin: right;
+  }
+  .hero__tab.is-active .hero__bar span {
+    animation: fill var(--hero-dur, 6500ms) linear forwards;
+  }
+  @keyframes fill {
+    to {
+      transform: scaleX(1);
+    }
+  }
+  .hero__tab-label {
+    font-size: var(--text-xs);
+    color: var(--stone-600);
+    transition: color var(--dur-fast);
+  }
+  .hero__tab.is-active .hero__tab-label {
+    color: var(--ink);
+  }
+  @media (min-width: 1024px) {
+    .hero {
+      grid-template-rows: none;
+      grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+      height: calc(100svh - var(--announce-h));
+      min-height: 640px;
+      max-height: 1000px;
+    }
+    .hero__media {
+      grid-column: 2;
+      grid-row: 1;
+      height: auto;
+      margin-block-start: var(--header-h);
+      border-start-start-radius: var(--radius-lg);
+    }
+    .hero__content {
+      grid-column: 1;
+      grid-row: 1;
+      align-content: end;
+      max-width: none;
+      padding-block: calc(var(--header-h) + var(--s-6)) var(--s-7);
+      padding-inline-end: var(--s-7);
+    }
+    .hero__title {
+      font-size: clamp(3.5rem, 1rem + 4.6vw, 7.5rem);
+    }
+  }
+
+  /* ── Statement ── */
+  .statement {
+    display: grid;
+    gap: var(--s-5);
+  }
+  .statement__text {
+    font-size: var(--text-2xl);
+    line-height: 1.12;
+    letter-spacing: -0.03em;
+    max-width: 22ch;
+    font-weight: 400;
+  }
+  :lang(fa) .statement__text {
+    line-height: 1.6;
+    letter-spacing: 0;
+    max-width: 30ch;
+  }
+  .statement__text :global(.accent) {
+    font-style: normal;
+  }
+
+  /* ── Section heads ── */
+  .sec-head {
+    display: grid;
+    gap: var(--s-3);
+    margin-block-end: var(--s-7);
+    max-width: 40rem;
+  }
+  .sec-head--row {
+    max-width: var(--max);
+    display: flex;
+    justify-content: space-between;
+    align-items: end;
+    gap: var(--s-5);
+  }
+  .sec-title {
+    font-size: var(--text-2xl);
+  }
+
+  /* ── Scenes ── */
+  .scenes__head {
+    display: grid;
+    gap: var(--s-3);
+    padding-block-end: var(--s-6);
+  }
+  .scenes__title {
+    font-size: var(--text-2xl);
+    max-width: 16ch;
+  }
+  .scene {
+    padding-block: var(--s-6);
+    border-block-start: 1px solid var(--line);
+  }
+  .scene__inner {
+    display: grid;
+    gap: var(--s-5);
+  }
+  .scene__gallery {
+    display: grid;
+    gap: var(--s-2);
+  }
+  .scene__main {
+    position: relative;
+    aspect-ratio: 4 / 5;
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--stage);
+  }
+  .scene__img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transform: scale(1.02);
+    transition:
+      opacity var(--dur-slow) var(--ease-out),
+      transform 1.2s var(--ease-out);
+  }
+  .scene__img.is-active {
+    opacity: 1;
+    transform: none;
+  }
+  .scene__thumbs {
+    display: flex;
+    gap: var(--s-2);
+  }
+  .scene__thumb {
+    width: 56px;
+    height: 56px;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    opacity: 0.5;
+    outline: 1px solid transparent;
+    outline-offset: 2px;
+    transition:
+      opacity var(--dur-fast),
+      outline-color var(--dur-fast);
+  }
+  .scene__thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .scene__thumb.is-active,
+  .scene__thumb:hover {
+    opacity: 1;
+  }
+  .scene__thumb.is-active {
+    outline-color: var(--ink);
+  }
+  .scene__info {
+    display: grid;
+    gap: var(--s-2);
+    align-content: end;
+  }
+  .scene__name {
+    font-size: var(--text-display);
+    line-height: 0.88;
+    letter-spacing: -0.055em;
+    margin-block: var(--s-2);
+  }
+  :lang(fa) .scene__name {
+    line-height: 1.2;
+    letter-spacing: 0;
+  }
+  .scene__tagline {
+    font-size: var(--text-lg);
+    letter-spacing: var(--tracking-snug);
+  }
+  .scene__price {
+    font-size: var(--text-sm);
+    color: var(--stone-600);
+  }
+  .scene__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--s-2);
+    margin-block-start: var(--s-4);
+  }
+  .scene__actions .btn {
+    min-width: 8.5rem;
+  }
+  .scene__circle {
+    width: 52px;
+    height: 52px;
+    border: 1px solid var(--line-strong);
+  }
+  .scene__more {
+    justify-self: start;
+    margin-block-start: var(--s-3);
+  }
+
+  @media (min-width: 1024px) {
+    .scene {
+      padding-block: var(--s-8);
+    }
+    .scene__inner {
+      grid-template-columns: 7fr 5fr;
+      gap: var(--s-8);
+      align-items: end;
+    }
+    .scene--flip .scene__gallery {
+      order: 2;
+    }
+    .scene__gallery {
+      grid-template-columns: 1fr 72px;
+      align-items: start;
+    }
+    .scene__main {
+      aspect-ratio: 5 / 4;
+    }
+    .scene__thumbs {
+      flex-direction: column;
+    }
+    .scene__thumb {
+      width: 72px;
+      height: 72px;
+    }
+  }
+
+  /* ── Mirror CTA ── */
+  .mirror-cta {
+    background: var(--ink);
+    color: var(--stone-100);
+    padding-block: var(--section);
+    margin-block: var(--section);
+  }
+  .mirror-cta__inner {
+    display: grid;
+    gap: var(--s-7);
+    align-items: center;
+  }
+  .mirror-cta__visual {
+    position: relative;
+    aspect-ratio: 4 / 5;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    max-width: 520px;
+    width: 100%;
+  }
+  .mirror-cta__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .mirror-cta__ui {
+    position: absolute;
+    inset: var(--s-5);
+  }
+  .mirror-cta__corner {
+    position: absolute;
+    width: 26px;
+    height: 26px;
+    border: 0 solid rgb(255 255 255 / 0.9);
+  }
+  .mirror-cta__corner:nth-child(1) {
+    top: 0;
+    left: 0;
+    border-width: 1.5px 0 0 1.5px;
+  }
+  .mirror-cta__corner:nth-child(2) {
+    top: 0;
+    right: 0;
+    border-width: 1.5px 1.5px 0 0;
+  }
+  .mirror-cta__corner:nth-child(3) {
+    bottom: 0;
+    left: 0;
+    border-width: 0 0 1.5px 1.5px;
+  }
+  .mirror-cta__corner:nth-child(4) {
+    bottom: 0;
+    right: 0;
+    border-width: 0 1.5px 1.5px 0;
+  }
+  .mirror-cta__scan {
+    position: absolute;
+    inset-inline: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--nude-300), transparent);
+    box-shadow: 0 0 18px 2px rgb(226 200 178 / 0.6);
+    animation: scan 3.6s var(--ease-in-out) infinite alternate;
+  }
+  @keyframes scan {
+    from {
+      top: 10%;
+    }
+    to {
+      top: 90%;
+    }
+  }
+  .mirror-cta__chip {
+    position: absolute;
+    top: var(--s-3);
+    inset-inline-start: var(--s-4);
+    padding: 6px 10px;
+    border-radius: var(--radius-pill);
+    background: rgb(20 19 18 / 0.5);
+    backdrop-filter: blur(8px);
+    color: var(--white);
+    font-family: var(--font-mono);
+    letter-spacing: 0.08em;
+  }
+  .mirror-cta__text {
+    display: grid;
+    gap: var(--s-4);
+    justify-items: start;
+  }
+  .mirror-cta__kicker {
+    color: var(--nude-300);
+  }
+  .mirror-cta__body {
+    color: var(--stone-400);
+    max-width: 44ch;
+    font-size: var(--text-md);
+  }
+  .mirror-cta__note {
+    display: flex;
+    align-items: center;
+    gap: var(--s-2);
+    font-size: var(--text-xs);
+    color: var(--stone-500);
+  }
+  @media (min-width: 900px) {
+    .mirror-cta__inner {
+      grid-template-columns: 1fr 1fr;
+      gap: var(--s-9);
+    }
+    .mirror-cta__visual {
+      justify-self: end;
+    }
+  }
+
+  /* ── Collections rail ── */
+  .rail {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: min(78vw, 420px);
+    gap: var(--s-4);
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: var(--gutter);
+    padding-inline: var(--gutter);
+    padding-block-end: var(--s-4);
+    scrollbar-width: none;
+  }
+  .rail::-webkit-scrollbar {
+    display: none;
+  }
+  .rail__item {
+    scroll-snap-align: start;
+  }
+  .coll {
+    display: grid;
+    gap: var(--s-4);
+  }
+  .coll__media {
+    aspect-ratio: 4 / 5;
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--stone-200);
+  }
+  .coll__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 1.6s var(--ease-out);
+  }
+  .coll:hover .coll__img {
+    transform: scale(1.04);
+  }
+  .coll__info {
+    display: grid;
+    gap: var(--s-1);
+  }
+  .coll__name {
+    font-size: var(--text-xl);
+  }
+  .coll__story {
+    font-size: var(--text-sm);
+    max-width: 36ch;
+  }
+  @media (min-width: 1024px) {
+    .rail {
+      grid-auto-columns: calc((min(100vw, var(--max)) - 2 * var(--gutter) - 3 * var(--s-4)) / 3.4);
+      padding-inline: max(var(--gutter), calc((100vw - var(--max)) / 2 + var(--gutter)));
+    }
+  }
+
+  /* ── Atelier teaser ── */
+  .atelier {
+    display: grid;
+    gap: var(--s-7);
+    align-items: center;
+  }
+  .atelier__text {
+    display: grid;
+    gap: var(--s-5);
+    justify-items: start;
+  }
+  .atelier__steps {
+    width: 100%;
+    border-block-start: 1px solid var(--line);
+  }
+  .atelier__steps li {
+    display: grid;
+    grid-template-columns: 3ch 1fr;
+    gap: var(--s-4);
+    padding-block: var(--s-4);
+    border-block-end: 1px solid var(--line);
+    font-size: var(--text-sm);
+  }
+  .atelier__step-title {
+    font-size: var(--text-md);
+    font-weight: 500;
+    margin-block-end: var(--s-1);
+  }
+  @media (min-width: 1024px) {
+    .atelier {
+      grid-template-columns: 1fr 1fr;
+      gap: var(--s-9);
+    }
+  }
+</style>

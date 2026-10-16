@@ -1,0 +1,101 @@
+/*
+ * Slazenger Eyewear — Design tokens
+ * Single source of truth for colour, type, space and motion.
+ * Documented in docs/DESIGN-SYSTEM.md — update both together.
+ *
+ * Light theme only (brand decision, see docs/DECISIONS.md → ADR-004).
+ */
+:root {
+  /* ── Colour: warm greys + ink + one nude accent ─────────────────────── */
+  --paper: #f5f3f0;        /* page background */
+  --stone-50: #faf9f7;     /* raised surfaces, cards */
+  --stone-100: #efece8;    /* subtle fills, image stage */
+  --stone-200: #e5e1db;    /* product stage, placeholders */
+  --stone-300: #d4cec5;    /* hairlines on stone, disabled */
+  --stone-400: #b5aea4;
+  --stone-500: #8f887e;    /* muted text (large sizes only) */
+  --stone-600: #6c665e;    /* secondary text — AA on paper */
+  --stone-800: #34312d;
+  --ink: #141312;          /* primary text, primary buttons */
+  --white: #ffffff;
+
+  --nude-100: #f3e8de;     /* accent wash */
+  --nude-300: #e2c8b2;     /* accent — decoration, focus halo */
+  --nude-500: #c7a184;     /* accent — markers, active indicators */
+  --nude-700: #8b6a52;     /* accent as text — AA on paper */
+
+  --line: color-mix(in oklab, var(--ink) 12%, transparent);
+  --line-strong: color-mix(in oklab, var(--ink) 24%, transparent);
+  --scrim: color-mix(in oklab, var(--ink) 45%, transparent);
+
+  /* ── Typography ─────────────────────────────────────────────────────── */
+  --font-sans: 'Geist Variable', 'Vazirmatn Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Geist Mono Variable', ui-monospace, 'SFMono-Regular', monospace;
+
+  /* Fluid scale (mobile → desktop). Display sizes are deliberately huge. */
+  --text-2xs: 0.6875rem;                               /* 11 — labels */
+  --text-xs: 0.75rem;                                  /* 12 */
+  --text-sm: 0.8125rem;                                /* 13 */
+  --text-base: 0.9375rem;                              /* 15 — body */
+  --text-md: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);  /* 16–18 */
+  --text-lg: clamp(1.25rem, 1.1rem + 0.6vw, 1.625rem); /* 20–26 */
+  --text-xl: clamp(1.625rem, 1.3rem + 1.4vw, 2.5rem);  /* 26–40 */
+  --text-2xl: clamp(2.25rem, 1.6rem + 2.8vw, 4rem);    /* 36–64 */
+  --text-3xl: clamp(3rem, 1.8rem + 5.6vw, 7rem);       /* 48–112 */
+  --text-display: clamp(3.5rem, 1rem + 11vw, 12rem);   /* 56–192 */
+
+  --tracking-tight: -0.035em;
+  --tracking-snug: -0.015em;
+  --tracking-label: 0.16em;
+
+  /* ── Space (4px base) ───────────────────────────────────────────────── */
+  --s-1: 0.25rem;
+  --s-2: 0.5rem;
+  --s-3: 0.75rem;
+  --s-4: 1rem;
+  --s-5: 1.5rem;
+  --s-6: 2rem;
+  --s-7: 3rem;
+  --s-8: 4rem;
+  --s-9: 6rem;
+  --s-10: 8rem;
+  --section: clamp(4.5rem, 3rem + 7vw, 10rem);   /* vertical rhythm between sections */
+  --gutter: clamp(1rem, 0.6rem + 1.8vw, 2.5rem); /* page side padding */
+  --max: 1600px;                                 /* content max width */
+
+  /* ── Shape ──────────────────────────────────────────────────────────── */
+  --radius-sm: 6px;
+  --radius: 14px;
+  --radius-lg: 24px;
+  --radius-pill: 999px;
+
+  /* ── Elevation (used sparingly) ─────────────────────────────────────── */
+  --shadow-soft: 0 1px 2px rgb(20 19 18 / 0.04), 0 8px 24px -8px rgb(20 19 18 / 0.1);
+  --shadow-float: 0 2px 6px rgb(20 19 18 / 0.06), 0 24px 64px -16px rgb(20 19 18 / 0.25);
+
+  /* ── Motion ─────────────────────────────────────────────────────────── */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);       /* expo-out: most UI */
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast: 180ms;
+  --dur: 420ms;
+  --dur-slow: 900ms;
+
+  /* ── Layout ─────────────────────────────────────────────────────────── */
+  --header-h: 64px;
+  --announce-h: 34px;
+
+  color-scheme: light;
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --header-h: 76px;
+  }
+}
+
+/* Persian: letter-spacing breaks cursive joining, so labels lose tracking. */
+:root:lang(fa) {
+  --tracking-tight: 0;
+  --tracking-snug: 0;
+  --tracking-label: 0;
+}

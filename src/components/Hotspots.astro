@@ -1,0 +1,191 @@
+---
+/**
+ * Interactive anatomy: pulsing "+" points over a close-up photo. Selecting a
+ * point (on the image or in the list) reveals its story. First point is open
+ * by default so the section never looks empty in a presentation.
+ */
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+import type { Hotspot } from '@/data/products';
+import { num, pick, type Locale } from '@/i18n/utils';
+
+interface Props {
+  image: ImageMetadata;
+  alt: string;
+  spots: Hotspot[];
+  locale: Locale;
+  id: string;
+}
+const { image, alt, spots, locale, id } = Astro.props;
+const n = (i: number) => num(i + 1, locale).padStart(2, locale === 'fa' ? '۰' : '0');
+---
+
+<div class="hs" data-hotspots>
+  <figure class="hs__figure">
+    <Image src={image} alt={alt} widths={[640, 960, 1400, 1800]} sizes="(min-width: 1024px) 62vw, 100vw" class="hs__img" format="webp" />
+    {
+      spots.map((s, i) => (
+        <button
+          class="hs__pin"
+          type="button"
+          style={`left:${s.x}%;top:${s.y}%`}
+          aria-controls={`${id}-${i}`}
+          aria-expanded={i === 0 ? 'true' : 'false'}
+          data-i={i}
+          aria-label={pick(s.title, locale)}
+        >
+          <span class="hs__ring" />
+          <span class="hs__plus" />
+        </button>
+      ))
+    }
+  </figure>
+  <ol class="hs__list" role="list">
+    {
+      spots.map((s, i) => (
+        <li id={`${id}-${i}`} class:list={['hs__item', { 'is-active': i === 0 }]} data-i={i}>
+          <button type="button" class="hs__item-btn" data-i={i}>
+            <span class="mono muted">{n(i)}</span>
+            <span class="hs__title">{pick(s.title, locale)}</span>
+          </button>
+          <p class="hs__body muted">{pick(s.body, locale)}</p>
+        </li>
+      ))
+    }
+  </ol>
+</div>
+
+<script>
+  document.querySelectorAll<HTMLElement>('[data-hotspots]').forEach((root) => {
+    const pins = root.querySelectorAll<HTMLElement>('.hs__pin');
+    const items = root.querySelectorAll<HTMLElement>('.hs__item');
+    const activate = (i: number) => {
+      pins.forEach((p) => p.setAttribute('aria-expanded', String(p.dataset.i === String(i))));
+      items.forEach((it) => it.classList.toggle('is-active', it.dataset.i === String(i)));
+    };
+    root.querySelectorAll<HTMLElement>('[data-i]').forEach((el) => {
+      if (el.tagName === 'BUTTON') el.addEventListener('click', () => activate(Number(el.dataset.i)));
+    });
+  });
+</script>
+
+<style>
+  .hs {
+    display: grid;
+    gap: var(--s-6);
+  }
+  .hs__figure {
+    position: relative;
+    max-width: 720px;
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--stone-200);
+  }
+  .hs__img {
+    width: 100%;
+    height: auto;
+  }
+  .hs__pin {
+    position: absolute;
+    width: 44px;
+    height: 44px;
+    translate: -50% -50%;
+    display: grid;
+    place-items: center;
+  }
+  .hs__ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 1px solid rgb(255 255 255 / 0.9);
+    animation: pulse 2.4s var(--ease-out) infinite;
+  }
+  .hs__plus {
+    position: relative;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--white);
+    box-shadow: var(--shadow-soft);
+    transition:
+      background-color var(--dur-fast),
+      transform var(--dur) var(--ease-out);
+  }
+  .hs__plus::before,
+  .hs__plus::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 10px;
+    height: 1.5px;
+    background: var(--ink);
+    translate: -50% -50%;
+    transition: background-color var(--dur-fast);
+  }
+  .hs__plus::after {
+    rotate: 90deg;
+  }
+  .hs__pin[aria-expanded='true'] .hs__plus {
+    background: var(--ink);
+    transform: rotate(45deg);
+  }
+  .hs__pin[aria-expanded='true'] .hs__plus::before,
+  .hs__pin[aria-expanded='true'] .hs__plus::after {
+    background: var(--white);
+  }
+  @keyframes pulse {
+    0% {
+      transform: scale(0.6);
+      opacity: 1;
+    }
+    100% {
+      transform: scale(1.5);
+      opacity: 0;
+    }
+  }
+  .hs__list {
+    border-block-start: 1px solid var(--line);
+  }
+  .hs__item {
+    border-block-end: 1px solid var(--line);
+  }
+  .hs__item-btn {
+    width: 100%;
+    display: flex;
+    align-items: baseline;
+    gap: var(--s-4);
+    padding-block: var(--s-4);
+    text-align: start;
+  }
+  .hs__title {
+    font-size: var(--text-md);
+    font-weight: 500;
+    transition: color var(--dur-fast);
+  }
+  .hs__item:not(.is-active) .hs__title {
+    color: var(--stone-500);
+  }
+  .hs__body {
+    display: grid;
+    grid-template-rows: 0fr;
+    font-size: var(--text-sm);
+    padding-inline-start: calc(2ch + var(--s-4));
+    overflow: hidden;
+    max-height: 0;
+    transition:
+      max-height var(--dur) var(--ease-out),
+      padding var(--dur) var(--ease-out);
+  }
+  .hs__item.is-active .hs__body {
+    max-height: 10em;
+    padding-block-end: var(--s-4);
+  }
+  @media (min-width: 1024px) {
+    .hs {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      align-items: center;
+      gap: var(--s-8);
+    }
+  }
+</style>

@@ -1,0 +1,154 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import Placeholder from '@/components/Placeholder.astro';
+import Icon from '@/components/Icon.astro';
+import { process, numbers } from '@/data/editorial';
+import { href, num, pick, useT, type Locale } from '@/i18n/utils';
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const t = useT(locale);
+const tones = ['#e6e0d7', '#ddd8d1', '#e9e2da', '#e1dcd4', '#e7e1d9', '#dcd7cf'];
+const variants = ['lines', 'arc', 'grid'] as const;
+---
+
+<BaseLayout locale={locale} title={t('atelier.title')} page="atelier">
+  <section class="hero container">
+    <p class="label accent" data-reveal>{t('atelier.kicker')}</p>
+    <h1 class="hero__title" data-reveal>{t('atelier.title')}</h1>
+    <p class="lede hero__lede" data-reveal>{t('atelier.lede')}</p>
+  </section>
+
+  <section class="container" data-reveal>
+    <Placeholder label={t('nav.atelier')} caption={`${t('common.placeholder')} — workshop wide shot`} ratio="16 / 8" variant="lines" tone="#e3ddd4" />
+  </section>
+
+  <section class="section container">
+    <p class="label muted numbers__k" data-reveal>{t('atelier.numbers')}</p>
+    <dl class="numbers">
+      {
+        numbers.map((n, i) => (
+          <div data-reveal style={`--reveal-i:${i}`}>
+            <dt class="numbers__v">{num(n.value, locale)}</dt>
+            <dd class="muted">{pick(n.label, locale)}</dd>
+          </div>
+        ))
+      }
+    </dl>
+  </section>
+
+  <section class="container">
+    <p class="label muted steps__k" data-reveal>{t('atelier.steps')}</p>
+    <ol class="steps" role="list">
+      {
+        process.map((s, i) => (
+          <li class="step" data-reveal>
+            <Placeholder label={pick(s.title, locale)} caption={t('common.placeholder')} tone={tones[i]} variant={variants[i % 3]} ratio="4 / 3" />
+            <div class="step__text">
+              <span class="mono muted">{locale === 'fa' ? num(Number(s.n), 'fa').padStart(2, '۰') : s.n}</span>
+              <h2 class="step__title">{pick(s.title, locale)}</h2>
+              <p class="muted">{pick(s.body, locale)}</p>
+            </div>
+          </li>
+        ))
+      }
+    </ol>
+  </section>
+
+  <section class="section container closing" data-reveal>
+    <p class="closing__text">{t('brand.tagline')}</p>
+    <a class="btn btn--primary" href={href('/shop', locale)}>
+      {t('home.hero.cta')}
+      <Icon name="arrow" flip />
+    </a>
+  </section>
+</BaseLayout>
+
+<style>
+  .hero {
+    display: grid;
+    gap: var(--s-4);
+    padding-block: var(--s-8) var(--s-7);
+  }
+  .hero__title {
+    font-size: var(--text-display);
+    line-height: 0.88;
+    letter-spacing: -0.055em;
+  }
+  :lang(fa) .hero__title {
+    line-height: 1.2;
+    letter-spacing: 0;
+  }
+  .hero__lede {
+    max-width: 34ch;
+    color: var(--stone-600);
+  }
+  .numbers__k,
+  .steps__k {
+    margin-block-end: var(--s-5);
+  }
+  .numbers {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--s-6) var(--s-4);
+  }
+  .numbers div {
+    border-block-start: 1px solid var(--ink);
+    padding-block-start: var(--s-3);
+  }
+  .numbers__v {
+    font-size: var(--text-3xl);
+    letter-spacing: -0.05em;
+    line-height: 1;
+  }
+  .numbers dd {
+    font-size: var(--text-sm);
+    margin-block-start: var(--s-2);
+  }
+  .steps {
+    display: grid;
+    gap: var(--s-7);
+  }
+  .step {
+    display: grid;
+    gap: var(--s-4);
+  }
+  .step__text {
+    display: grid;
+    gap: var(--s-2);
+    align-content: center;
+  }
+  .step__title {
+    font-size: var(--text-xl);
+  }
+  .closing {
+    display: grid;
+    justify-items: center;
+    gap: var(--s-6);
+    text-align: center;
+  }
+  .closing__text {
+    font-size: var(--text-2xl);
+    letter-spacing: var(--tracking-tight);
+    line-height: 1.1;
+    max-width: 18ch;
+  }
+  @media (min-width: 900px) {
+    .numbers {
+      grid-template-columns: repeat(4, 1fr);
+    }
+    .step {
+      grid-template-columns: 1fr 1fr;
+      gap: var(--s-8);
+      align-items: center;
+    }
+    .step:nth-child(even) > :first-child {
+      order: 2;
+    }
+    .step__text {
+      max-width: 28rem;
+    }
+  }
+</style>

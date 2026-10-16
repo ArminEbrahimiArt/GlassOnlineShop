@@ -1,0 +1,284 @@
+---
+/** Virtual Mirror landing page. The mirror itself is the global dialog. */
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import Icon from '@/components/Icon.astro';
+import { products } from '@/data/products';
+import { frameSVG } from '@/lib/frames';
+import { formatPrice, num, pick, useT, type Locale } from '@/i18n/utils';
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const t = useT(locale);
+const steps =
+  locale === 'fa'
+    ? [
+        ['دوربین را روشن کنید', 'یا یک عکس سلفی انتخاب کنید. همه چیز روی گوشی شما پردازش می‌شود.'],
+        ['فریم‌ها را عوض کنید', 'مدل و رنگ را لمس کنید؛ فریم فوراً روی صورت شما جابه‌جا می‌شود.'],
+        ['عکس بگیرید، بخرید', 'عکس را ذخیره کنید یا بفرستید، و مستقیم به سبد اضافه کنید.'],
+      ]
+    : [
+        ['Turn on your camera', 'Or pick a selfie. Everything is processed on your phone.'],
+        ['Switch frames', 'Tap a model or colour — it moves onto your face instantly.'],
+        ['Snap, share, buy', 'Save or send the photo, and add the frame straight to your bag.'],
+      ];
+---
+
+<BaseLayout locale={locale} title={t('mirror.title')} page="try-on">
+  <section class="intro container">
+    <div class="intro__text">
+      <p class="label accent" data-reveal>{t('mirror.title')}</p>
+      <h1 class="intro__title" data-reveal>{t('mirror.intro.title')}</h1>
+      <p class="lede muted" data-reveal>{t('mirror.intro.body')}</p>
+      <div class="intro__ctas" data-reveal>
+        <button class="btn btn--primary" type="button" data-tryon-open data-autostart>
+          <Icon name="camera" />
+          {t('mirror.start')}
+        </button>
+        <button class="btn btn--ghost" type="button" data-tryon-open>
+          <Icon name="upload" />
+          {t('mirror.upload')}
+        </button>
+      </div>
+      <p class="intro__privacy muted" data-reveal><Icon name="lock" size={14} /> {t('mirror.privacy')}</p>
+    </div>
+    <div class="intro__visual" data-reveal aria-hidden="true">
+      <div class="face">
+        <svg viewBox="0 0 300 380" class="face__mesh">
+          <ellipse cx="150" cy="190" rx="112" ry="150" fill="none" stroke="currentColor" stroke-width="1" />
+          {
+            Array.from({ length: 9 }, (_, r) =>
+              Array.from({ length: 7 }, (_, c) => {
+                const x = 150 + (c - 3) * 30 * Math.sin(((r + 1) / 10) * Math.PI);
+                const y = 60 + r * 30;
+                return <circle cx={x} cy={y} r="1.6" fill="currentColor" />;
+              }),
+            )
+          }
+        </svg>
+        <div class="face__frame" set:html={frameSVG(products[0].geometry, products[0].colourways[0].style, 'intro')} />
+        <span class="face__scan"></span>
+      </div>
+    </div>
+  </section>
+
+  <section class="steps container">
+    {
+      steps.map(([title, body], i) => (
+        <div class="step" data-reveal style={`--reveal-i:${i}`}>
+          <span class="mono muted">{num(i + 1, locale).padStart(2, locale === 'fa' ? '۰' : '0')}</span>
+          <p class="step__title">{title}</p>
+          <p class="muted">{body}</p>
+        </div>
+      ))
+    }
+  </section>
+
+  <section class="section container">
+    <h2 class="sec-title" data-reveal>{t('mirror.others')}</h2>
+    <div class="frames">
+      {
+        products.map((p, i) => (
+          <button class="frame" type="button" data-tryon-open data-slug={p.slug} data-autostart data-reveal style={`--reveal-i:${i % 4}`}>
+            <div class="frame__art" set:html={frameSVG(p.geometry, p.colourways[0].style, `tile-${p.slug}`)} />
+            <div class="frame__row">
+              <span class="frame__name">{pick(p.name, locale)}</span>
+              <span class="muted frame__price">{formatPrice(p.price, locale)}</span>
+            </div>
+            <div class="frame__row">
+              <span class="frame__dots">
+                {p.colourways.map((c) => (
+                  <i style={`background:${c.swatch}`} />
+                ))}
+              </span>
+              <span class="label frame__try">
+                {t('common.tryOn')} <Icon name="arrow" size={14} flip />
+              </span>
+            </div>
+          </button>
+        ))
+      }
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .intro {
+    display: grid;
+    gap: var(--s-7);
+    padding-block: var(--s-7) var(--s-6);
+    align-items: center;
+  }
+  .intro__text {
+    display: grid;
+    gap: var(--s-4);
+    justify-items: start;
+  }
+  .intro__title {
+    font-size: var(--text-3xl);
+    letter-spacing: -0.05em;
+    line-height: 0.95;
+  }
+  :lang(fa) .intro__title {
+    letter-spacing: 0;
+    line-height: 1.3;
+  }
+  .intro__ctas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-2);
+    margin-block-start: var(--s-2);
+  }
+  .intro__privacy {
+    display: flex;
+    align-items: center;
+    gap: var(--s-2);
+    font-size: var(--text-xs);
+  }
+  .intro__visual {
+    display: grid;
+    place-items: center;
+  }
+  .face {
+    position: relative;
+    width: min(100%, 420px);
+    aspect-ratio: 300 / 380;
+    border-radius: var(--radius-lg);
+    background: radial-gradient(circle at 50% 40%, var(--stone-50), var(--stone-200));
+    color: var(--stone-400);
+    overflow: hidden;
+  }
+  .face__mesh {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+  .face__frame {
+    position: absolute;
+    left: 10%;
+    right: 10%;
+    top: 36%;
+    filter: drop-shadow(0 8px 12px rgb(0 0 0 / 0.2));
+    animation: float 4s var(--ease-in-out) infinite alternate;
+  }
+  .face__frame :global(svg) {
+    width: 100%;
+    height: auto;
+  }
+  @keyframes float {
+    from {
+      transform: translateY(-4px) rotate(-1.5deg);
+    }
+    to {
+      transform: translateY(4px) rotate(1.5deg);
+    }
+  }
+  .face__scan {
+    position: absolute;
+    inset-inline: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--nude-500), transparent);
+    box-shadow: 0 0 16px 2px rgb(199 161 132 / 0.5);
+    animation: scan 3.2s var(--ease-in-out) infinite alternate;
+  }
+  @keyframes scan {
+    from {
+      top: 8%;
+    }
+    to {
+      top: 92%;
+    }
+  }
+  .steps {
+    display: grid;
+    gap: var(--s-5);
+    padding-block: var(--s-6);
+    border-block: 1px solid var(--line);
+  }
+  .step {
+    display: grid;
+    gap: var(--s-1);
+    font-size: var(--text-sm);
+  }
+  .step__title {
+    font-size: var(--text-lg);
+    letter-spacing: var(--tracking-snug);
+    font-weight: 500;
+  }
+  .sec-title {
+    font-size: var(--text-2xl);
+    margin-block-end: var(--s-6);
+  }
+  .frames {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+    gap: var(--s-3);
+  }
+  .frame {
+    display: grid;
+    gap: var(--s-3);
+    padding: var(--s-5);
+    border-radius: var(--radius);
+    background: var(--stone-100);
+    text-align: start;
+    transition:
+      background-color var(--dur) var(--ease-out),
+      transform var(--dur) var(--ease-out);
+  }
+  .frame:hover {
+    background: var(--stone-50);
+    transform: translateY(-3px);
+  }
+  .frame__art {
+    padding: var(--s-6) var(--s-2);
+  }
+  .frame__art :global(svg) {
+    width: 100%;
+    height: auto;
+    transition: transform var(--dur) var(--ease-out);
+  }
+  .frame:hover .frame__art :global(svg) {
+    transform: scale(1.04);
+  }
+  .frame__row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--s-3);
+  }
+  .frame__name {
+    font-weight: 500;
+    font-size: var(--text-md);
+  }
+  .frame__price {
+    font-size: var(--text-xs);
+  }
+  .frame__dots {
+    display: flex;
+    gap: 5px;
+  }
+  .frame__dots i {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+  .frame__try {
+    display: inline-flex;
+    gap: var(--s-1);
+    align-items: center;
+  }
+  @media (min-width: 900px) {
+    .intro {
+      grid-template-columns: 1.1fr 1fr;
+      gap: var(--s-9);
+      padding-block: var(--s-9) var(--s-8);
+    }
+    .steps {
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--s-7);
+    }
+  }
+</style>

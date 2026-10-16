@@ -1,0 +1,112 @@
+---
+/**
+ * Every page renders inside this layout. It owns:
+ *  - <html lang/dir>, fonts, meta + hreflang alternates
+ *  - Header / Footer / Cart drawer / Virtual Mirror (global dialogs)
+ *  - The client catalogue JSON (see src/lib/catalog.ts)
+ */
+import '@fontsource-variable/geist';
+import '@fontsource-variable/geist-mono';
+import '@fontsource-variable/vazirmatn';
+import '@/styles/global.css';
+
+import { getImage } from 'astro:assets';
+import Header from '@/components/Header.astro';
+import Footer from '@/components/Footer.astro';
+import CartDrawer from '@/components/CartDrawer.astro';
+import TryOn from '@/components/TryOn.astro';
+import { products } from '@/data/products';
+import { frameSVG, frameDataURL } from '@/lib/frames';
+import type { ClientCatalog } from '@/lib/catalog';
+import { dir, href, neutralPath, pick, useT, type Locale } from '@/i18n/utils';
+
+interface Props {
+  locale: Locale;
+  title?: string;
+  description?: string;
+  /** Transparent header over a full-bleed hero */
+  overlayHeader?: boolean;
+  /** Identifier for page-specific behaviour (body[data-page]) */
+  page?: string;
+  footer?: boolean;
+}
+const { locale, title, description, overlayHeader = false, page = '', footer = true } = Astro.props;
+const t = useT(locale);
+const fullTitle = title ? `${title} — Slazenger` : `Slazenger — ${t('brand.tagline')}`;
+const desc = description ?? t('home.statement', { n: locale === 'fa' ? '۴۰' : '40' });
+const route = neutralPath(Astro.url.pathname);
+
+const catalog: ClientCatalog = {
+  locale,
+  checkoutUrl: href('/checkout', locale),
+  strings: {
+    added: t('common.added'),
+    mirrorLoading: t('mirror.loading'),
+    mirrorSearching: t('mirror.searching'),
+    mirrorReady: t('mirror.ready'),
+    mirrorDenied: t('mirror.denied'),
+    mirrorUnsupported: t('mirror.unsupported'),
+    mirrorError: t('mirror.error'),
+  },
+  products: Object.fromEntries(
+    await Promise.all(
+      products.map(async (p) => {
+        const thumb = await getImage({ src: p.images[0].src, width: 240, height: 240, fit: 'cover', format: 'webp' });
+        return [
+          p.slug,
+          {
+            slug: p.slug,
+            name: pick(p.name, locale),
+            price: p.price,
+            url: href(`/product/${p.slug}`, locale),
+            thumb: thumb.src,
+            colourways: p.colourways.map((c) => ({
+              id: c.id,
+              name: pick(c.name, locale),
+              swatch: c.swatch,
+              frame: frameDataURL(frameSVG(p.geometry, c.style, `${p.slug}-${c.id}`)),
+            })),
+          },
+        ];
+      }),
+    ),
+  ),
+};
+const abs = (l: Locale) => (Astro.site ? new URL(href(route, l), Astro.site).href : href(route, l));
+---
+
+<!doctype html>
+<html lang={locale} dir={dir(locale)} class="no-js">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={desc} />
+    <meta name="theme-color" content="#f5f3f0" />
+    <link rel="icon" type="image/svg+xml" href={`${import.meta.env.BASE_URL.replace(/\/$/, '')}/favicon.svg`} />
+    <link rel="alternate" hreflang="en" href={abs('en')} />
+    <link rel="alternate" hreflang="fa" href={abs('fa')} />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={desc} />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content={locale === 'fa' ? 'fa_IR' : 'en_US'} />
+    <meta name="robots" content="noindex" />
+  </head>
+  <body data-page={page}>
+    <Header locale={locale} overlay={overlayHeader} />
+    <main id="main">
+      <slot />
+    </main>
+    {footer && <Footer locale={locale} />}
+    <CartDrawer locale={locale} />
+    <TryOn locale={locale} />
+
+    <script type="application/json" id="catalog" set:html={JSON.stringify(catalog)} />
+    <script>
+      import { initUI } from '@/scripts/ui';
+      import { initCart } from '@/scripts/cart';
+      initUI();
+      initCart();
+    </script>
+  </body>
+</html>

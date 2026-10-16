@@ -1,0 +1,259 @@
+---
+/**
+ * Slide-in bag. Rendered empty on the server; src/scripts/cart.ts fills it
+ * from localStorage + the catalogue JSON emitted by BaseLayout.
+ */
+import Icon from './Icon.astro';
+import { href, useT, type Locale } from '@/i18n/utils';
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const t = useT(locale);
+---
+
+<dialog class="drawer" data-cart aria-labelledby="cart-title">
+  <div class="drawer__panel">
+    <header class="drawer__head">
+      <h2 id="cart-title" class="label">{t('cart.title')} <span data-cart-count-inline></span></h2>
+      <button class="icon-btn" type="button" data-cart-close aria-label={t('nav.close')}>
+        <Icon name="close" />
+      </button>
+    </header>
+
+    <div class="drawer__body">
+      <ul class="drawer__list" role="list" data-cart-list></ul>
+      <div class="drawer__empty" data-cart-empty>
+        <p class="lede">{t('cart.empty')}</p>
+        <a class="btn btn--primary" href={href('/shop', locale)}>{t('cart.emptyCta')}</a>
+      </div>
+    </div>
+
+    <footer class="drawer__foot" data-cart-foot>
+      <dl class="drawer__sum">
+        <div><dt>{t('cart.subtotal')}</dt><dd data-cart-subtotal></dd></div>
+        <div><dt>{t('cart.shipping')}</dt><dd>{t('cart.free')}</dd></div>
+      </dl>
+      <a class="btn btn--primary btn--block" href={href('/checkout', locale)}>
+        {t('cart.checkout')}
+        <Icon name="arrow" flip />
+      </a>
+      <p class="drawer__note muted">{t('cart.note')}</p>
+    </footer>
+  </div>
+</dialog>
+
+<template id="cart-item">
+  <li class="item">
+    <a class="item__img" data-f="link"><img alt="" data-f="img" width="96" height="96" /></a>
+    <div class="item__info">
+      <div class="item__row">
+        <a class="item__name" data-f="link"><span data-f="name"></span></a>
+        <span class="item__price" data-f="price"></span>
+      </div>
+      <p class="item__colour muted" data-f="colour"></p>
+      <div class="item__row item__row--end">
+        <div class="qty" role="group" aria-label={t('cart.qty')}>
+          <button type="button" data-f="dec" aria-label="−"><Icon name="minus" size={14} /></button>
+          <span data-f="qty"></span>
+          <button type="button" data-f="inc" aria-label="+"><Icon name="plus" size={14} /></button>
+        </div>
+        <button class="item__remove muted" type="button" data-f="remove">{t('cart.remove')}</button>
+      </div>
+    </div>
+  </li>
+</template>
+
+<div class="toast" data-toast role="status" aria-live="polite"></div>
+
+<style>
+  .drawer {
+    margin: 0;
+    margin-inline-start: auto;
+    width: min(440px, 100%);
+    max-width: none;
+    height: 100%;
+    max-height: none;
+    padding: 0;
+    border: 0;
+    background: var(--paper);
+    color: var(--ink);
+    display: none;
+    transform: translateX(100%);
+    transition:
+      transform var(--dur) var(--ease-out),
+      overlay var(--dur) allow-discrete,
+      display var(--dur) allow-discrete;
+  }
+  :global([dir='rtl']) .drawer {
+    transform: translateX(-100%);
+  }
+  .drawer[open] {
+    display: block;
+    transform: none;
+  }
+  @starting-style {
+    .drawer[open] {
+      transform: translateX(100%);
+    }
+    :global([dir='rtl']) .drawer[open] {
+      transform: translateX(-100%);
+    }
+  }
+  .drawer::backdrop {
+    background: var(--scrim);
+    opacity: 0;
+    transition:
+      opacity var(--dur) var(--ease-out),
+      overlay var(--dur) allow-discrete,
+      display var(--dur) allow-discrete;
+  }
+  .drawer[open]::backdrop {
+    opacity: 1;
+  }
+  @starting-style {
+    .drawer[open]::backdrop {
+      opacity: 0;
+    }
+  }
+  .drawer__panel {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  .drawer__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--s-3) var(--s-3) var(--s-3) var(--s-5);
+    padding-inline: var(--s-5) var(--s-3);
+    border-block-end: 1px solid var(--line);
+  }
+  .drawer__body {
+    flex: 1;
+    overflow-y: auto;
+    padding-inline: var(--s-5);
+  }
+  .drawer__empty {
+    display: grid;
+    gap: var(--s-5);
+    justify-items: start;
+    padding-block: var(--s-8);
+  }
+  .drawer__empty[hidden],
+  .drawer__foot[hidden] {
+    display: none;
+  }
+  .drawer__foot {
+    padding: var(--s-5);
+    border-block-start: 1px solid var(--line);
+    display: grid;
+    gap: var(--s-4);
+  }
+  .drawer__sum {
+    display: grid;
+    gap: var(--s-2);
+    font-size: var(--text-sm);
+  }
+  .drawer__sum div {
+    display: flex;
+    justify-content: space-between;
+  }
+  .drawer__sum dd {
+    font-weight: 500;
+  }
+  .drawer__note {
+    font-size: var(--text-xs);
+    text-align: center;
+  }
+
+  .item {
+    display: grid;
+    grid-template-columns: 96px 1fr;
+    gap: var(--s-4);
+    padding-block: var(--s-5);
+    border-block-end: 1px solid var(--line);
+  }
+  .item__img img {
+    width: 96px;
+    height: 96px;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+    background: var(--stone-200);
+  }
+  .item__info {
+    display: grid;
+    align-content: space-between;
+    gap: var(--s-2);
+    min-width: 0;
+  }
+  .item__row {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--s-3);
+    align-items: baseline;
+  }
+  .item__row--end {
+    align-items: center;
+  }
+  .item__name {
+    font-weight: 500;
+  }
+  .item__price {
+    font-size: var(--text-sm);
+    white-space: nowrap;
+  }
+  .item__colour {
+    font-size: var(--text-xs);
+  }
+  .item__remove {
+    font-size: var(--text-xs);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .qty {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-pill);
+    height: 34px;
+  }
+  .qty button {
+    width: 34px;
+    height: 100%;
+    display: grid;
+    place-items: center;
+  }
+  .qty span {
+    min-width: 2ch;
+    text-align: center;
+    font-size: var(--text-sm);
+  }
+
+  .toast {
+    position: fixed;
+    z-index: 90;
+    inset-inline: 0;
+    bottom: calc(var(--s-5) + env(safe-area-inset-bottom));
+    margin-inline: auto;
+    width: max-content;
+    max-width: calc(100% - 2 * var(--gutter));
+    padding: var(--s-3) var(--s-5);
+    border-radius: var(--radius-pill);
+    background: var(--ink);
+    color: var(--paper);
+    font-size: var(--text-sm);
+    box-shadow: var(--shadow-float);
+    opacity: 0;
+    transform: translateY(16px);
+    pointer-events: none;
+    transition:
+      opacity var(--dur) var(--ease-out),
+      transform var(--dur) var(--ease-out);
+  }
+  .toast:global(.is-on) {
+    opacity: 1;
+    transform: none;
+  }
+</style>

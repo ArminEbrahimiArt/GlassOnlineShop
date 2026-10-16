@@ -1,0 +1,95 @@
+---
+/**
+ * Art-directed placeholder for imagery the brand has not supplied yet
+ * (atelier, lifestyle, collections). Clearly labelled so nobody mistakes it
+ * for final content in the presentation. Replace with <Image> when
+ * photography arrives — see docs/CONTENT.md for the shot list.
+ */
+interface Props {
+  label: string;
+  caption?: string;
+  tone?: string;
+  ratio?: string;
+  variant?: 'lines' | 'arc' | 'grid';
+  class?: string;
+}
+const { label, caption, tone = 'var(--stone-200)', ratio = '4 / 5', variant = 'lines', class: cls } = Astro.props;
+---
+
+<figure class:list={['ph', `ph--${variant}`, cls]} style={`--tone:${tone};--ratio:${ratio}`}>
+  <svg class="ph__art" viewBox="0 0 400 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    {
+      variant === 'lines' &&
+        Array.from({ length: 14 }, (_, i) => (
+          <line x1={-50 + i * 36} y1="520" x2={150 + i * 36} y2="-20" stroke="currentColor" stroke-width="0.6" />
+        ))
+    }
+    {
+      variant === 'arc' && (
+        <g fill="none" stroke="currentColor" stroke-width="0.6">
+          <circle cx="200" cy="560" r="180" />
+          <circle cx="200" cy="560" r="260" />
+          <circle cx="200" cy="560" r="340" />
+          <circle cx="200" cy="560" r="420" />
+        </g>
+      )
+    }
+    {
+      variant === 'grid' && (
+        <g stroke="currentColor" stroke-width="0.5">
+          {Array.from({ length: 9 }, (_, i) => (
+            <line x1={i * 50} y1="0" x2={i * 50} y2="500" />
+          ))}
+          {Array.from({ length: 11 }, (_, i) => (
+            <line x1="0" y1={i * 50} x2="400" y2={i * 50} />
+          ))}
+        </g>
+      )
+    }
+  </svg>
+  <figcaption class="ph__cap">
+    <span class="ph__dot"></span>
+    <span class="label">{label}</span>
+    {caption && <span class="ph__sub">{caption}</span>}
+  </figcaption>
+</figure>
+
+<style>
+  .ph {
+    position: relative;
+    aspect-ratio: var(--ratio);
+    background:
+      radial-gradient(120% 80% at 30% 20%, rgb(255 255 255 / 0.55), transparent 60%),
+      var(--tone);
+    border-radius: var(--radius);
+    overflow: hidden;
+    color: color-mix(in oklab, var(--ink) 14%, transparent);
+  }
+  .ph__art {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+  .ph__cap {
+    position: absolute;
+    inset-inline-start: var(--s-4);
+    bottom: var(--s-4);
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    column-gap: var(--s-2);
+    color: var(--stone-600);
+  }
+  .ph__dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--nude-500);
+  }
+  .ph__sub {
+    grid-column: 2;
+    font-size: var(--text-xs);
+    color: var(--stone-500);
+  }
+</style>
