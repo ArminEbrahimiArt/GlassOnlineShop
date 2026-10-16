@@ -2,40 +2,32 @@
  * Virtual Mirror — live try-on.
  *
  * Pipeline (all on-device, nothing uploaded):
- *   camera (getUserMedia) → MediaPipe FaceLandmarker (478 landmarks, WASM/GPU)
- *   → eye line + face width → place the product's front-view SVG on a canvas
- *   that sits over the mirrored <video>.
+ *   camera 640×480 (getUserMedia) → MediaPipe FaceLandmarker (478 landmarks,
+ *   WASM, GPU→CPU fallback), run once per *new video frame*
+ *   (requestVideoFrameCallback) → pose (lib/face-pose.ts: bridge, 3D width,
+ *   roll / yaw / pitch) → One Euro filter → draw the product's front-view
+ *   SVG on a 2× canvas over the mirrored <video>.
  *
- * The MediaPipe runtime (~13 MB WASM + 3.6 MB model) is self-hosted under
- * /mediapipe and only fetched when the user presses "Turn on camera" or
- * uploads a photo. See docs/ARCHITECTURE.md → "Virtual Mirror".
+ * Speed: the runtime (~13 MB WASM + 3.6 MB model, self-hosted under
+ * /mediapipe) starts downloading as soon as the user shows intent: hovering or
+ * touching any try-on button, or opening the mirror. The camera feed appears
+ * immediately while the model finishes loading. See docs/ARCHITECTURE.md.
  *
  * Stage states (data-state): idle → loading → searching ⇄ tracking → still
  *                            idle → loading → photo  (uploaded image)
  */
-import type { FaceLandmarker, NormalizedLandmark } from '@mediapipe/tasks-vision';
+import type { FaceLandmarker } from '@mediapipe/tasks-vision';
 import { readCatalog, formatPriceClient } from '@/lib/catalog';
+import { poseFrom, PoseFilter, type Pose } from '@/lib/face-pose';
 import { addToCart, openCart, toast } from './cart';
 
-// Landmark indices (MediaPipe canonical face mesh)
-const EYE_OUTER_A = 33;
-const EYE_OUTER_B = 263;
-const FACE_EDGE_A = 127; // near the temple, at eye height
-const FACE_EDGE_B = 356;
 // Where the eye line sits inside the frame SVG (viewBox 200×80).
 const FRAME_EYE_Y = 34 / 80;
 const FRAME_ASPECT = 80 / 200;
-// Frame width relative to face width at the temples.
-const WIDTH_FACTOR = 1.02;
+// Overlay canvas super-sampling, so frames stay crisp on retina screens.
+const OVERLAY_SCALE = 2;
 
 type State = 'idle' | 'loading' | 'searching' | 'tracking' | 'still' | 'photo';
-
-interface Pose {
-  x: number;
-  y: number;
-  w: number;
-  angle: number;
-}
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
 
@@ -48,11 +40,17 @@ let still: HTMLImageElement;
 let statusEl: HTMLElement;
 
 let landmarker: FaceLandmarker | null = null;
+let landmarkerPromise: Promise<FaceLandmarker> | null = null;
 let landmarkerMode: 'VIDEO' | 'IMAGE' = 'VIDEO';
 let stream: MediaStream | null = null;
 let raf = 0;
+let vfc = 0;
+let running = false;
 let lastVideoTime = -1;
+let lastTs = 0;
+let missed = 0;
 let pose: Pose | null = null;
+const filter = new PoseFilter();
 let photoPose: Pose | null = null;
 let stillUrl: string | null = null;
 
@@ -151,56 +149,47 @@ function buildFrameList() {
 
 /* ── MediaPipe ─────────────────────────────────────────────────────────── */
 
-async function getLandmarker(mode: 'VIDEO' | 'IMAGE') {
-  if (!landmarker) {
+/** Create the landmarker once (GPU, falling back to CPU). Safe to call early. */
+function loadLandmarker(): Promise<FaceLandmarker> {
+  landmarkerPromise ??= (async () => {
     const { FaceLandmarker, FilesetResolver } = await import('@mediapipe/tasks-vision');
     const fileset = await FilesetResolver.forVisionTasks(`${BASE}/mediapipe/wasm`);
     const opts = (delegate: 'GPU' | 'CPU') => ({
       baseOptions: { modelAssetPath: `${BASE}/mediapipe/face_landmarker.task`, delegate },
-      runningMode: mode,
+      runningMode: 'VIDEO' as const,
       numFaces: 1,
       minFaceDetectionConfidence: 0.5,
+      minFacePresenceConfidence: 0.5,
       minTrackingConfidence: 0.5,
+      outputFaceBlendshapes: false,
+      outputFacialTransformationMatrixes: false,
     });
     try {
       landmarker = await FaceLandmarker.createFromOptions(fileset, opts('GPU'));
     } catch {
       landmarker = await FaceLandmarker.createFromOptions(fileset, opts('CPU'));
     }
-    landmarkerMode = mode;
-  } else if (landmarkerMode !== mode) {
-    await landmarker.setOptions({ runningMode: mode });
+    landmarkerMode = 'VIDEO';
+    return landmarker;
+  })().catch((err) => {
+    landmarkerPromise = null; // allow a retry
+    throw err;
+  });
+  return landmarkerPromise;
+}
+
+/** Start downloading the runtime in the background (user showed intent). */
+export function warmUp() {
+  loadLandmarker().catch(() => {});
+}
+
+async function getLandmarker(mode: 'VIDEO' | 'IMAGE') {
+  const lmk = await loadLandmarker();
+  if (landmarkerMode !== mode) {
+    await lmk.setOptions({ runningMode: mode });
     landmarkerMode = mode;
   }
-  return landmarker;
-}
-
-/** Landmarks (normalised) → frame pose in pixel space of a W×H image. */
-function poseFrom(lm: NormalizedLandmark[], W: number, H: number): Pose {
-  const P = (i: number) => ({ x: lm[i].x * W, y: lm[i].y * H });
-  const a = P(EYE_OUTER_A);
-  const b = P(EYE_OUTER_B);
-  const ea = P(FACE_EDGE_A);
-  const eb = P(FACE_EDGE_B);
-  return {
-    x: (a.x + b.x) / 2,
-    y: (a.y + b.y) / 2,
-    w: Math.hypot(eb.x - ea.x, eb.y - ea.y) * WIDTH_FACTOR,
-    angle: Math.atan2(b.y - a.y, b.x - a.x),
-  };
-}
-
-/** Exponential smoothing — removes jitter without feeling laggy. */
-function smooth(prev: Pose | null, next: Pose, k = 0.45): Pose {
-  if (!prev) return next;
-  // Snap if the face jumped (e.g. re-detected)
-  if (Math.hypot(next.x - prev.x, next.y - prev.y) > next.w * 0.5) return next;
-  return {
-    x: prev.x + (next.x - prev.x) * k,
-    y: prev.y + (next.y - prev.y) * k,
-    w: prev.w + (next.w - prev.w) * k,
-    angle: prev.angle + (next.angle - prev.angle) * k,
-  };
+  return lmk;
 }
 
 function drawFrame(ctx: CanvasRenderingContext2D, p: Pose) {
@@ -208,12 +197,16 @@ function drawFrame(ctx: CanvasRenderingContext2D, p: Pose) {
   if (!img.complete) return;
   const w = p.w;
   const h = w * FRAME_ASPECT;
+  // Foreshorten for head turn / tilt (clamped so the frame never collapses).
+  const sx = Math.max(0.55, Math.cos(p.yaw));
+  const sy = Math.max(0.8, Math.cos(p.pitch));
   ctx.save();
   ctx.translate(p.x, p.y);
-  ctx.rotate(p.angle);
+  ctx.rotate(p.roll);
+  ctx.scale(sx, sy);
   ctx.shadowColor = 'rgba(0,0,0,0.28)';
-  ctx.shadowBlur = w * 0.04;
-  ctx.shadowOffsetY = w * 0.02;
+  ctx.shadowBlur = w * 0.035;
+  ctx.shadowOffsetY = w * 0.018;
   ctx.drawImage(img, -w / 2, -h * FRAME_EYE_Y, w, h);
   ctx.restore();
 }
@@ -231,23 +224,25 @@ async function startCamera() {
   video.hidden = false;
   overlay.hidden = false;
   setState('loading');
+  // Model download runs in parallel with the camera permission prompt.
+  const model = getLandmarker('VIDEO');
   try {
-    const [s] = await Promise.all([
-      navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 960 } },
-        audio: false,
-      }),
-      getLandmarker('VIDEO'),
-    ]);
-    stream = s;
-    video.srcObject = s;
-    await video.play();
-    overlay.width = video.videoWidth;
-    overlay.height = video.videoHeight;
+    // 640×480 is plenty for 478 landmarks and roughly 2–3× faster than HD on phones.
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 30, max: 30 } },
+      audio: false,
+    });
+    video.srcObject = stream;
+    await video.play(); // the live feed shows while the model finishes
+    sizeOverlay();
+    await model;
+    if (!stream) return; // closed while loading
     setState('searching');
     lastVideoTime = -1;
     pose = null;
-    loop();
+    filter.reset();
+    running = true;
+    schedule();
   } catch (err) {
     const name = (err as DOMException)?.name;
     setState('idle');
@@ -256,28 +251,57 @@ async function startCamera() {
   }
 }
 
-function loop() {
-  raf = requestAnimationFrame(loop);
+function sizeOverlay() {
+  const W = video.videoWidth * OVERLAY_SCALE;
+  const H = video.videoHeight * OVERLAY_SCALE;
+  if (overlay.width !== W || overlay.height !== H) {
+    overlay.width = W;
+    overlay.height = H;
+  }
+}
+
+/** Run once per decoded camera frame (not per screen refresh). */
+function schedule() {
+  if (!running) return;
+  if ('requestVideoFrameCallback' in video) vfc = video.requestVideoFrameCallback(tick);
+  else raf = requestAnimationFrame(tick);
+}
+
+function tick() {
+  if (!running) return;
+  schedule();
   if (!landmarker || video.readyState < 2 || video.currentTime === lastVideoTime) return;
   lastVideoTime = video.currentTime;
-  const W = overlay.width;
-  const H = overlay.height;
-  const res = landmarker.detectForVideo(video, performance.now());
+  sizeOverlay(); // phone rotation changes the stream size
+  const W = video.videoWidth;
+  const H = video.videoHeight;
+  // Timestamps must strictly increase for VIDEO mode.
+  const ts = Math.max(performance.now(), lastTs + 1);
+  lastTs = ts;
+  const res = landmarker.detectForVideo(video, ts);
   const ctx = overlay.getContext('2d')!;
+  ctx.setTransform(OVERLAY_SCALE, 0, 0, OVERLAY_SCALE, 0, 0);
   ctx.clearRect(0, 0, W, H);
   const lm = res.faceLandmarks?.[0];
   if (lm) {
-    pose = smooth(pose, poseFrom(lm, W, H));
+    missed = 0;
+    pose = filter.apply(poseFrom(lm, W, H), ts);
     drawFrame(ctx, pose);
     if (stage.dataset.state !== 'tracking') setState('tracking');
+  } else if (pose && ++missed < 4) {
+    // Bridge brief detection drops (motion blur) instead of flickering.
+    drawFrame(ctx, pose);
   } else if (stage.dataset.state === 'tracking') {
     pose = null;
+    filter.reset();
     setState('searching');
   }
 }
 
 function stopCamera() {
+  running = false;
   cancelAnimationFrame(raf);
+  if (vfc && 'cancelVideoFrameCallback' in video) video.cancelVideoFrameCallback(vfc);
   stream?.getTracks().forEach((t) => t.stop());
   stream = null;
   video.srcObject = null;
@@ -388,6 +412,7 @@ async function save() {
 export function openTryOn(slug?: string, colour?: string) {
   select(slug ?? current.slug ?? '', colour);
   if (!dialog.open) dialog.showModal();
+  warmUp();
 }
 
 function close() {
@@ -418,6 +443,17 @@ export function initTryOn() {
     openTryOn(t.dataset.slug, t.dataset.colour || colour);
     if (t.hasAttribute('data-autostart')) startCamera();
   });
+
+  // Preload the runtime on first sign of intent (hover / touch on any try-on button).
+  const intent = (e: Event) => {
+    if ((e.target as HTMLElement).closest?.('[data-tryon-open], [data-start]')) {
+      warmUp();
+      document.removeEventListener('pointerover', intent);
+      document.removeEventListener('touchstart', intent);
+    }
+  };
+  document.addEventListener('pointerover', intent, { passive: true });
+  document.addEventListener('touchstart', intent, { passive: true });
 
   $('[data-start]').addEventListener('click', startCamera);
   $('[data-retake]').addEventListener('click', startCamera);

@@ -1,5 +1,5 @@
 /*
- * Global base: reset, typography, shared primitives (buttons, labels, layout).
+ * Global base: reset, type roles, shared primitives (buttons, labels, layout).
  * Component-specific styles live in each .astro component (scoped).
  * Uses CSS logical properties everywhere so RTL (fa) works without overrides.
  */
@@ -25,16 +25,12 @@ body {
   color: var(--ink);
   font-family: var(--font-sans);
   font-size: var(--text-base);
-  line-height: 1.6;
+  line-height: var(--leading-body);
   font-feature-settings: 'ss01', 'cv11';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   overflow-x: clip;
-}
-:lang(fa) body,
-body:lang(fa) {
-  line-height: 1.85;
 }
 img,
 picture,
@@ -74,12 +70,11 @@ h2,
 h3,
 h4 {
   font-weight: 500;
-  line-height: 1.05;
+  line-height: var(--leading-heading);
   letter-spacing: var(--tracking-tight);
   text-wrap: balance;
 }
 :lang(fa) :is(h1, h2, h3, h4) {
-  line-height: 1.35;
   font-weight: 600;
 }
 p {
@@ -92,7 +87,7 @@ p {
 :focus-visible {
   outline: 2px solid var(--ink);
   outline-offset: 3px;
-  border-radius: 2px;
+  border-radius: var(--radius-xs);
 }
 
 /* Cross-document page transitions (progressive enhancement, no JS). */
@@ -108,12 +103,28 @@ p {
 /* ── Layout ────────────────────────────────────────────────────────────── */
 .container {
   width: 100%;
-  max-width: var(--max);
+  max-width: calc(var(--max) + 2 * var(--gutter));
   margin-inline: auto;
   padding-inline: var(--gutter);
 }
 .section {
   padding-block: var(--section);
+}
+/* 12-column grid (4 on mobile, 8 on tablet). Children use grid-column spans. */
+.grid-12 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  column-gap: var(--grid-gap);
+}
+@media (min-width: 640px) {
+  .grid-12 {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1024px) {
+  .grid-12 {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
 }
 .visually-hidden {
   position: absolute !important;
@@ -123,8 +134,68 @@ p {
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+.nowrap {
+  white-space: nowrap;
+}
 
-/* ── Type primitives ───────────────────────────────────────────────────── */
+/* ── Type roles ────────────────────────────────────────────────────────────
+   Use these classes instead of ad-hoc font sizes. One role = one size,
+   weight, leading and tracking, in both locales.                         */
+.t-display {
+  font-size: var(--text-display);
+  font-weight: 500;
+  line-height: var(--leading-display);
+  letter-spacing: var(--tracking-display);
+}
+.t-h1 {
+  font-size: var(--text-3xl);
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: var(--tracking-display);
+}
+.t-h2 {
+  font-size: var(--text-2xl);
+  font-weight: 500;
+  line-height: var(--leading-heading);
+  letter-spacing: var(--tracking-tight);
+}
+.t-h3 {
+  font-size: var(--text-xl);
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: var(--tracking-tight);
+}
+.t-lead {
+  font-size: var(--text-lg);
+  font-weight: 400;
+  line-height: var(--leading-snug);
+  letter-spacing: var(--tracking-snug);
+}
+.t-body {
+  font-size: var(--text-base);
+  line-height: var(--leading-body);
+  max-width: var(--measure);
+}
+.t-small {
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+.t-caption {
+  font-size: var(--text-xs);
+  line-height: 1.5;
+}
+:lang(fa) :is(.t-display, .t-h1) {
+  line-height: var(--leading-display);
+  font-weight: 700;
+}
+:lang(fa) :is(.t-h2, .t-h3) {
+  line-height: var(--leading-heading);
+  font-weight: 600;
+}
+:lang(fa) .t-lead {
+  line-height: 1.7;
+}
+
 .label {
   font-size: var(--text-2xs);
   font-weight: 500;
@@ -139,10 +210,7 @@ p {
 .mono {
   font-family: var(--font-mono);
   font-size: var(--text-xs);
-  letter-spacing: 0.02em;
-}
-.nowrap {
-  white-space: nowrap;
+  letter-spacing: 0;
 }
 .muted {
   color: var(--stone-600);
@@ -150,34 +218,17 @@ p {
 .accent {
   color: var(--nude-700);
 }
-.display {
-  font-size: var(--text-display);
-  line-height: 0.88;
-  letter-spacing: -0.055em;
-  font-weight: 500;
-}
-:lang(fa) .display {
-  line-height: 1.15;
-  letter-spacing: 0;
-  font-weight: 700;
-}
-.lede {
-  font-size: var(--text-lg);
-  line-height: 1.35;
-  letter-spacing: var(--tracking-snug);
-  font-weight: 400;
-}
 
 /* ── Buttons ───────────────────────────────────────────────────────────── */
 .btn {
-  --btn-h: 52px;
+  --btn-h: 48px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--s-3);
+  gap: var(--s-2);
   min-height: var(--btn-h);
   padding-inline: var(--s-6);
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-xs);
   font-size: var(--text-sm);
   font-weight: 500;
   letter-spacing: 0.01em;
@@ -190,7 +241,7 @@ p {
   -webkit-tap-highlight-color: transparent;
 }
 .btn:active {
-  transform: scale(0.98);
+  transform: scale(0.985);
 }
 .btn--primary {
   background: var(--ink);
@@ -218,12 +269,10 @@ p {
 }
 .btn--sm {
   --btn-h: 40px;
-  padding-inline: var(--s-5);
+  padding-inline: var(--s-4);
   font-size: var(--text-xs);
 }
-.btn svg {
-  width: 18px;
-  height: 18px;
+.btn .icon {
   flex: none;
 }
 
@@ -240,15 +289,14 @@ p {
 .icon-btn:hover {
   background: color-mix(in oklab, var(--ink) 6%, transparent);
 }
-.icon-btn svg {
-  width: 20px;
-  height: 20px;
-}
 
 /* Underline link that draws in on hover */
 .link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
   background: linear-gradient(currentColor, currentColor) no-repeat 0 100% / 100% 1px;
-  padding-block-end: 2px;
+  padding-block-end: 3px;
   transition: background-size var(--dur) var(--ease-out);
 }
 .link:hover {
@@ -267,14 +315,14 @@ p {
   transform: scaleX(-1);
 }
 
-/* ── Scroll reveal (see src/scripts/reveal.ts) ─────────────────────────── */
+/* ── Scroll reveal (see src/scripts/ui.ts) ─────────────────────────────── */
 [data-reveal] {
   opacity: 0;
-  transform: translateY(24px);
+  transform: translateY(20px);
   transition:
     opacity var(--dur-slow) var(--ease-out),
     transform var(--dur-slow) var(--ease-out);
-  transition-delay: calc(var(--reveal-i, 0) * 90ms);
+  transition-delay: calc(var(--reveal-i, 0) * 80ms);
 }
 [data-reveal].is-in {
   opacity: 1;
@@ -283,6 +331,13 @@ p {
 .no-js [data-reveal] {
   opacity: 1;
   transform: none;
+}
+
+/* Space for the fixed mobile tab bar / buy bar */
+@media (max-width: 1023px) {
+  body.has-bar {
+    padding-block-end: calc(var(--tabbar-h) + env(safe-area-inset-bottom));
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

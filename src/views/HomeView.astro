@@ -1,21 +1,25 @@
 ---
-import { Image } from 'astro:assets';
+import { Image, getImage } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import Icon from '@/components/Icon.astro';
 import Hotspots from '@/components/Hotspots.astro';
 import Placeholder from '@/components/Placeholder.astro';
-import { products, getProduct } from '@/data/products';
+import SectionHead from '@/components/SectionHead.astro';
+import { products, getProduct, type Product } from '@/data/products';
 import { collections, getCollection } from '@/data/collections';
 import { process } from '@/data/editorial';
 import { formatPrice, href, num, pick, useT, type Locale } from '@/i18n/utils';
 
-import cristalloAngle from '@/assets/products/cristallo/angle.jpg';
+import milanoCampaign from '@/assets/products/milano/campaign.jpg';
+import milanoMan from '@/assets/products/milano/portrait-man.jpg';
+import notteStill from '@/assets/products/notte/still-life.jpg';
 import notteAngle from '@/assets/products/notte/angle.jpg';
+import cristalloFloat from '@/assets/products/cristallo/float.jpg';
+import cristalloAngle from '@/assets/products/cristallo/angle.jpg';
+import rosaAngle from '@/assets/products/rosa/angle.jpg';
 import rosaStanding from '@/assets/products/rosa/standing.jpg';
 import womanPortrait from '@/assets/products/milano/portrait-woman.jpg';
-import heroA from '@/assets/products/milano/angle.jpg';
-import heroB from '@/assets/products/notte/still-life.jpg';
-import heroC from '@/assets/products/cristallo/float.jpg';
 
 interface Props {
   locale: Locale;
@@ -24,13 +28,31 @@ const { locale } = Astro.props;
 const t = useT(locale);
 const n2 = (i: number) => num(i, locale).padStart(2, locale === 'fa' ? '۰' : '0');
 
-const slides = [
-  { img: heroA, product: getProduct('milano')!, pos: '50% 50%' },
-  { img: heroB, product: getProduct('notte')!, pos: '50% 60%' },
-  { img: heroC, product: getProduct('cristallo')!, pos: '50% 45%' },
+/* Hero slides — art-directed: a landscape-friendly crop for desktop and a
+   portrait image for phones, both of the same product. */
+interface Slide {
+  product: Product;
+  desktop: ImageMetadata;
+  dPos: string;
+  mobile: ImageMetadata;
+  mPos: string;
+}
+const slides: Slide[] = [
+  { product: getProduct('milano')!, desktop: milanoCampaign, dPos: '50% 60%', mobile: milanoMan, mPos: '45% 30%' },
+  { product: getProduct('notte')!, desktop: notteStill, dPos: '50% 55%', mobile: notteAngle, mPos: '50% 40%' },
+  { product: getProduct('cristallo')!, desktop: cristalloFloat, dPos: '50% 50%', mobile: cristalloFloat, mPos: '50% 40%' },
+  { product: getProduct('rosa')!, desktop: rosaAngle, dPos: '50% 55%', mobile: rosaStanding, mPos: '50% 40%' },
 ];
+const heroImages = await Promise.all(
+  slides.map(async (s) => {
+    const d = await getImage({ src: s.desktop, widths: [1024, 1440, 1920], format: 'webp', quality: 82 });
+    const m = await getImage({ src: s.mobile, widths: [480, 720, 960], format: 'webp', quality: 80 });
+    return { d, m };
+  }),
+);
+
 const notte = getProduct('notte')!;
-const collectionImages: Record<string, typeof notteAngle> = {
+const collectionImages: Record<string, ImageMetadata> = {
   riviera: cristalloAngle,
   notturno: notteAngle,
   atelier: rosaStanding,
@@ -38,106 +60,131 @@ const collectionImages: Record<string, typeof notteAngle> = {
 ---
 
 <BaseLayout locale={locale} overlayHeader page="home">
-  <!-- ── 1. Hero slider ─────────────────────────────────────────────── -->
-  <section class="hero" data-hero aria-roledescription="carousel" aria-label="Featured">
+  <!-- ── 1. Hero: full-bleed slideshow + glass caption panel ─────────── -->
+  <section class="hero" data-hero aria-roledescription="carousel" aria-label={t('home.featured.kicker')}>
     <div class="hero__media">
-    {
-      slides.map((s, i) => (
-        <div class:list={['hero__slide', { 'is-active': i === 0 }]} data-slide aria-hidden={i !== 0 ? 'true' : undefined}>
-          <Image
-            src={s.img}
-            alt={pick(s.product.images[0].alt, locale)}
-            widths={[640, 960, 1400, 2000]}
-            sizes="(min-width: 1024px) 60vw, 100vw"
-            loading={i === 0 ? 'eager' : 'lazy'}
-            fetchpriority={i === 0 ? 'high' : 'auto'}
-            class="hero__img"
-            style={`object-position:${s.pos}`}
-            format="webp"
-            quality={82}
-          />
-        </div>
-      ))
-    }
+      {
+        slides.map((s, i) => (
+          <picture class:list={['hero__slide', { 'is-active': i === 0 }]} data-slide aria-hidden={i !== 0 ? 'true' : undefined}>
+            <source media="(min-width: 900px)" srcset={heroImages[i].d.srcSet.attribute} sizes="100vw" />
+            <img
+              class="hero__img"
+              src={heroImages[i].m.src}
+              srcset={heroImages[i].m.srcSet.attribute}
+              sizes="100vw"
+              alt={pick(s.product.images[0].alt, locale)}
+              loading={i === 0 ? 'eager' : 'lazy'}
+              fetchpriority={i === 0 ? 'high' : 'auto'}
+              decoding="async"
+              style={`--d-pos:${s.dPos};--m-pos:${s.mPos}`}
+            />
+          </picture>
+        ))
+      }
+      <div class="hero__scrim" aria-hidden="true"></div>
     </div>
 
-    <div class="hero__content container">
-      <p class="label hero__kicker">{t('home.hero.kicker')}</p>
-      <h1 class="hero__title">
-        <span>{t('home.hero.title')}</span>
-        <span class="hero__title-2">{t('home.hero.title2')}</span>
-      </h1>
-      <div class="hero__ctas">
-        <a class="btn btn--primary" href={href('/shop', locale)}>
-          {t('home.hero.cta')}
-          <Icon name="arrow" flip />
-        </a>
-        <button class="btn btn--ghost hero__ghost" type="button" data-tryon-open>
-          <Icon name="mirror" />
-          {t('home.hero.cta2')}
-        </button>
-      </div>
-
-      <div class="hero__progress" role="tablist">
-        {
-          slides.map((s, i) => (
-            <button class:list={['hero__tab', { 'is-active': i === 0 }]} type="button" role="tab" data-tab={i} aria-selected={i === 0 ? 'true' : 'false'}>
-              <span class="hero__bar">
-                <span />
-              </span>
-              <span class="hero__tab-label">
-                <span class="mono">{n2(i + 1)}</span> {pick(s.product.name, locale)}
-              </span>
+    <div class="hero__frame container">
+      <div class="panel">
+        <div class="panel__top">
+          <p class="label panel__kicker">{t('home.hero.kicker')}</p>
+          <div class="panel__nav">
+            <span class="mono panel__count"><span data-hero-index>{n2(1)}</span> / {n2(slides.length)}</span>
+            <button class="panel__arrow" type="button" data-hero-prev aria-label={t('common.prev')}>
+              <Icon name="chevronLeft" size={18} flip />
             </button>
-          ))
-        }
+            <button class="panel__arrow" type="button" data-hero-next aria-label={t('common.next')}>
+              <Icon name="chevronRight" size={18} flip />
+            </button>
+          </div>
+        </div>
+
+        <h1 class="t-h1 panel__title">
+          <span>{t('home.hero.title')}</span>
+          <span class="panel__title-2">{t('home.hero.title2')}</span>
+        </h1>
+
+        <div class="panel__product" aria-live="polite">
+          {
+            slides.map((s, i) => (
+              <a class:list={['panel__item', { 'is-active': i === 0 }]} href={href(`/product/${s.product.slug}`, locale)} data-slide-info tabindex={i === 0 ? undefined : '-1'}>
+                <span class="panel__name">{pick(s.product.name, locale)}</span>
+                <span class="panel__dash" aria-hidden="true" />
+                <span class="muted">{formatPrice(s.product.price, locale)}</span>
+                <Icon name="arrowUpRight" size={16} class="panel__go flip-rtl" />
+              </a>
+            ))
+          }
+        </div>
+
+        <div class="panel__ctas">
+          <a class="btn btn--primary" href={href('/shop', locale)}>
+            {t('home.hero.cta')}
+            <Icon name="arrow" size={18} flip />
+          </a>
+          <button class="btn btn--ghost panel__try" type="button" data-tryon-open data-hero-try aria-label={t('home.hero.cta2')}>
+            <Icon name="mirror" size={18} />
+            <span class="panel__try-label">{t('home.hero.cta2')}</span>
+          </button>
+        </div>
+
+        <div class="panel__progress" role="tablist">
+          {
+            slides.map((s, i) => (
+              <button class:list={['panel__tab', { 'is-active': i === 0 }]} type="button" role="tab" data-tab={i} aria-selected={i === 0 ? 'true' : 'false'} aria-label={pick(s.product.name, locale)}>
+                <span />
+              </button>
+            ))
+          }
+        </div>
       </div>
     </div>
   </section>
 
   <!-- ── 2. Statement ────────────────────────────────────────────────── -->
-  <section class="statement section container">
-    <p class="label muted" data-reveal>{t('home.statement.kicker')}</p>
-    <p class="statement__text" data-reveal>
-      {
-        t('home.statement', { n: '§' })
-          .split('§')
-          .map((part, i) => (i === 0 ? part : [<span class="accent">{num(40, locale)}</span>, part]))
-      }
-    </p>
+  <section class="section container">
+    <div class="grid-12 statement">
+      <p class="label muted statement__k" data-reveal>{t('home.statement.kicker')}</p>
+      <p class="statement__text" data-reveal>
+        {
+          t('home.statement', { n: '§' })
+            .split('§')
+            .map((part, i) => (i === 0 ? part : [<span class="accent">{num(40, locale)}</span>, part]))
+        }
+      </p>
+    </div>
   </section>
 
   <!-- ── 3. Product scenes (one per screen) ──────────────────────────── -->
   <section class="scenes" aria-labelledby="featured-title">
-    <div class="container scenes__head">
-      <p class="label muted" data-reveal>{t('home.featured.kicker')}</p>
-      <h2 id="featured-title" class="scenes__title" data-reveal>{t('home.featured.title')}</h2>
+    <div class="container">
+      <SectionHead kicker={t('home.featured.kicker')} title={t('home.featured.title')} action={{ href: href('/shop', locale), label: t('common.viewAll') }} />
     </div>
 
     {
       products.map((p, i) => (
         <article class:list={['scene', { 'scene--flip': i % 2 === 1 }]} data-scene data-product-scope>
-          <div class="scene__inner container">
+          <div class="container grid-12 scene__inner">
             <div class="scene__gallery" data-reveal>
-              <div class="scene__main" style={`--stage:${p.stage}`} data-scene-track>
+              <a class="scene__main" style={`--stage:${p.stage}`} href={href(`/product/${p.slug}`, locale)} aria-label={pick(p.name, locale)}>
                 {p.images.map((img, j) => (
                   <Image
                     src={img.src}
                     alt={pick(img.alt, locale)}
                     widths={[480, 800, 1200, 1600]}
-                    sizes="(min-width: 1024px) 55vw, 100vw"
+                    sizes="(min-width: 1024px) 58vw, 100vw"
                     class:list={['scene__img', { 'is-active': j === 0 }]}
                     data-scene-img={j}
                     loading="lazy"
                     format="webp"
                   />
                 ))}
-              </div>
+              </a>
               {p.images.length > 1 && (
                 <div class="scene__thumbs" role="tablist" aria-label={pick(p.name, locale)}>
                   {p.images.map((img, j) => (
                     <button type="button" class:list={['scene__thumb', { 'is-active': j === 0 }]} data-scene-thumb={j} aria-label={pick(img.alt, locale)}>
-                      <Image src={img.src} alt="" width={120} height={120} format="webp" loading="lazy" />
+                      <Image src={img.src} alt="" width={128} height={128} format="webp" loading="lazy" />
                     </button>
                   ))}
                 </div>
@@ -149,25 +196,24 @@ const collectionImages: Record<string, typeof notteAngle> = {
                 <span class="mono">
                   {n2(i + 1)} / {n2(products.length)}
                 </span>
-                &nbsp;·&nbsp;{pick(getCollection(p.collection)!.name, locale)}
+                <span aria-hidden="true"> · </span>
+                {pick(getCollection(p.collection)!.name, locale)}
               </p>
-              <h3 class="scene__name">{pick(p.name, locale)}</h3>
-              <p class="scene__tagline">{pick(p.tagline, locale)}</p>
-              <p class="scene__price">{formatPrice(p.price, locale)}</p>
+              <h3 class="t-display scene__name">{pick(p.name, locale)}</h3>
+              <p class="t-lead">{pick(p.tagline, locale)}</p>
+              <p class="t-small muted">{formatPrice(p.price, locale)}</p>
               <div class="scene__actions">
-                <a class="icon-btn scene__circle" href={href(`/product/${p.slug}`, locale)} aria-label={t('common.details')}>
+                <a class="scene__circle" href={href(`/product/${p.slug}`, locale)} aria-label={t('common.details')}>
                   <Icon name="info" />
                 </a>
-                <button class="btn btn--primary" type="button" data-add-to-cart data-slug={p.slug}>
+                <button class="btn btn--primary scene__buy" type="button" data-add-to-cart data-slug={p.slug}>
+                  <Icon name="bag" size={18} />
                   {t('common.buy')}
                 </button>
-                <button class="icon-btn scene__circle" type="button" data-tryon-open data-slug={p.slug} aria-label={t('common.tryOn')}>
+                <button class="scene__circle" type="button" data-tryon-open data-slug={p.slug} aria-label={t('common.tryOn')}>
                   <Icon name="mirror" />
                 </button>
               </div>
-              <a class="link label scene__more" href={href(`/product/${p.slug}`, locale)}>
-                {t('common.discover')}
-              </a>
             </div>
           </div>
         </article>
@@ -177,11 +223,7 @@ const collectionImages: Record<string, typeof notteAngle> = {
 
   <!-- ── 4. Anatomy / hotspots ───────────────────────────────────────── -->
   <section class="section container">
-    <div class="sec-head" data-reveal>
-      <p class="label muted">{t('home.craft.kicker')}</p>
-      <h2 class="sec-title">{t('home.craft.title')}</h2>
-      <p class="muted">{t('home.craft.body')}</p>
-    </div>
+    <SectionHead kicker={t('home.craft.kicker')} title={t('home.craft.title')} lead={t('home.craft.body')} />
     <div data-reveal>
       <Hotspots image={notte.anatomy.image} alt={pick(notte.anatomy.alt, locale)} spots={notte.anatomy.spots} locale={locale} id="home-hs" />
     </div>
@@ -189,38 +231,32 @@ const collectionImages: Record<string, typeof notteAngle> = {
 
   <!-- ── 5. Virtual Mirror CTA ───────────────────────────────────────── -->
   <section class="mirror-cta">
-    <div class="container mirror-cta__inner">
+    <div class="container grid-12 mirror-cta__inner">
       <div class="mirror-cta__visual" data-reveal>
-        <Image src={womanPortrait} alt="" widths={[480, 800, 1100]} sizes="(min-width: 900px) 40vw, 100vw" class="mirror-cta__img" format="webp" />
+        <Image src={womanPortrait} alt="" widths={[480, 800, 1100]} sizes="(min-width: 1024px) 40vw, 100vw" class="mirror-cta__img" format="webp" />
         <div class="mirror-cta__ui" aria-hidden="true">
           <span class="mirror-cta__corner"></span><span class="mirror-cta__corner"></span><span class="mirror-cta__corner"></span><span class="mirror-cta__corner"></span>
           <span class="mirror-cta__scan"></span>
-          <span class="mirror-cta__chip label">● LIVE · 478 pts</span>
+          <span class="mirror-cta__chip mono">● LIVE · 478 PTS</span>
         </div>
       </div>
-      <div class="mirror-cta__text" data-reveal>
-        <p class="label mirror-cta__kicker">{t('home.mirror.kicker')}</p>
-        <h2 class="sec-title">{t('home.mirror.title')}</h2>
-        <p class="mirror-cta__body">{t('home.mirror.body')}</p>
-        <div class="mirror-cta__actions">
+      <div class="mirror-cta__text">
+        <SectionHead kicker={t('home.mirror.kicker')} title={t('home.mirror.title')} lead={t('home.mirror.body')} tone="paper" />
+        <div data-reveal class="mirror-cta__actions">
           <button class="btn btn--light" type="button" data-tryon-open data-autostart>
-            <Icon name="camera" />
+            <Icon name="camera" size={18} />
             {t('home.mirror.cta')}
           </button>
+          <p class="t-caption mirror-cta__note"><Icon name="lock" size={14} /> {t('home.mirror.note')}</p>
         </div>
-        <p class="mirror-cta__note"><Icon name="lock" size={14} /> {t('home.mirror.note')}</p>
       </div>
     </div>
   </section>
 
   <!-- ── 6. Collections rail ─────────────────────────────────────────── -->
   <section class="section">
-    <div class="container sec-head sec-head--row" data-reveal>
-      <div>
-        <p class="label muted">{t('home.collections.kicker')}</p>
-        <h2 class="sec-title">{t('home.collections.title')}</h2>
-      </div>
-      <a class="link label nowrap" href={href('/collections', locale)}>{t('common.viewAll')}</a>
+    <div class="container">
+      <SectionHead kicker={t('home.collections.kicker')} title={t('home.collections.title')} action={{ href: href('/collections', locale), label: t('common.viewAll') }} />
     </div>
     <ul class="rail" role="list">
       {
@@ -236,8 +272,8 @@ const collectionImages: Record<string, typeof notteAngle> = {
               )}
               <div class="coll__info">
                 <p class="label muted">{pick(c.season, locale)}</p>
-                <h3 class="coll__name">{pick(c.name, locale)}</h3>
-                <p class="coll__story muted">{pick(c.story, locale)}</p>
+                <h3 class="t-h3">{pick(c.name, locale)}</h3>
+                <p class="t-small muted">{pick(c.story, locale)}</p>
               </div>
             </a>
           </li>
@@ -247,61 +283,82 @@ const collectionImages: Record<string, typeof notteAngle> = {
   </section>
 
   <!-- ── 7. Atelier teaser ───────────────────────────────────────────── -->
-  <section class="section container atelier">
-    <div class="atelier__media" data-reveal>
-      <Placeholder label={t('nav.atelier')} caption={t('common.placeholder')} variant="lines" ratio="4 / 5" tone="#e3ddd4" />
-    </div>
-    <div class="atelier__text" data-reveal>
-      <p class="label muted">{t('home.atelier.kicker')}</p>
-      <h2 class="sec-title">{t('home.atelier.title')}</h2>
-      <ol class="atelier__steps" role="list">
-        {
-          process.slice(0, 4).map((s) => (
-            <li>
-              <span class="mono muted">{locale === 'fa' ? num(Number(s.n), 'fa').padStart(2, '۰') : s.n}</span>
-              <div>
-                <p class="atelier__step-title">{pick(s.title, locale)}</p>
-                <p class="muted">{pick(s.body, locale)}</p>
-              </div>
-            </li>
-          ))
-        }
-      </ol>
-      <a class="btn btn--ghost" href={href('/atelier', locale)}>
-        {t('home.atelier.cta')}
-        <Icon name="arrow" flip />
-      </a>
+  <section class="section container">
+    <div class="grid-12 atelier">
+      <div class="atelier__media" data-reveal>
+        <Placeholder label={t('nav.atelier')} caption={t('common.placeholder')} variant="lines" ratio="4 / 5" tone="#e3ddd4" />
+      </div>
+      <div class="atelier__text">
+        <SectionHead kicker={t('home.atelier.kicker')} title={t('home.atelier.title')} />
+        <ol class="atelier__steps" role="list" data-reveal>
+          {
+            process.slice(0, 4).map((s) => (
+              <li>
+                <span class="mono muted">{locale === 'fa' ? num(Number(s.n), 'fa').padStart(2, '۰') : s.n}</span>
+                <div>
+                  <p class="atelier__step-title">{pick(s.title, locale)}</p>
+                  <p class="t-small muted">{pick(s.body, locale)}</p>
+                </div>
+              </li>
+            ))
+          }
+        </ol>
+        <a class="btn btn--ghost atelier__cta" href={href('/atelier', locale)} data-reveal>
+          {t('home.atelier.cta')}
+          <Icon name="arrow" size={18} flip />
+        </a>
+      </div>
     </div>
   </section>
 </BaseLayout>
 
 <script>
-  /* Hero: auto-advancing crossfade with progress bars, swipe on touch. */
+  /* Hero: auto-advancing crossfade. Progress segments, arrows, swipe, keyboard. */
   const hero = document.querySelector<HTMLElement>('[data-hero]');
   if (hero) {
     const slides = [...hero.querySelectorAll<HTMLElement>('[data-slide]')];
+    const infos = [...hero.querySelectorAll<HTMLElement>('[data-slide-info]')];
     const tabs = [...hero.querySelectorAll<HTMLElement>('[data-tab]')];
+    const index = hero.querySelector('[data-hero-index]');
+    const tryBtn = hero.querySelector<HTMLElement>('[data-hero-try]');
+    const slugs = infos.map((a) => a.getAttribute('href')!.replace(/\/$/, '').split('/').pop()!);
+    const fmt = new Intl.NumberFormat(document.documentElement.lang === 'fa' ? 'fa-IR' : 'en-US', { minimumIntegerDigits: 2 });
     const DURATION = 6500;
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
     let i = 0;
     let timer = 0;
-    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
     const go = (n: number) => {
       i = (n + slides.length) % slides.length;
       slides.forEach((s, k) => {
         s.classList.toggle('is-active', k === i);
         s.toggleAttribute('aria-hidden', k !== i);
       });
+      infos.forEach((a, k) => {
+        a.classList.toggle('is-active', k === i);
+        a.tabIndex = k === i ? 0 : -1;
+      });
       tabs.forEach((t, k) => {
         t.classList.remove('is-active');
+        t.classList.toggle('is-done', k < i);
         t.setAttribute('aria-selected', String(k === i));
       });
       void tabs[i].offsetWidth; // restart the CSS progress animation
       tabs[i].classList.add('is-active');
+      if (index) index.textContent = fmt.format(i + 1).replace(/[,٬]/g, '');
+      if (tryBtn) tryBtn.dataset.slug = slugs[i];
       clearTimeout(timer);
       if (!reduce) timer = window.setTimeout(() => go(i + 1), DURATION);
     };
     hero.style.setProperty('--hero-dur', `${DURATION}ms`);
     tabs.forEach((t, k) => t.addEventListener('click', () => go(k)));
+    hero.querySelector('[data-hero-prev]')?.addEventListener('click', () => go(i - 1));
+    hero.querySelector('[data-hero-next]')?.addEventListener('click', () => go(i + 1));
+    hero.addEventListener('keydown', (e) => {
+      const rtl = document.documentElement.dir === 'rtl';
+      if (e.key === 'ArrowRight') go(i + (rtl ? -1 : 1));
+      if (e.key === 'ArrowLeft') go(i + (rtl ? 1 : -1));
+    });
     let x0: number | null = null;
     hero.addEventListener('touchstart', (e) => (x0 = e.touches[0].clientX), { passive: true });
     hero.addEventListener('touchend', (e) => {
@@ -314,8 +371,7 @@ const collectionImages: Record<string, typeof notteAngle> = {
     go(0);
   }
 
-  /* Scenes: thumbnails swap the main image (hover on desktop, tap on touch);
-     on mobile the main stage is a horizontal swipe track. */
+  /* Scenes: thumbnails swap the main image (hover on desktop, tap on touch). */
   document.querySelectorAll<HTMLElement>('[data-scene]').forEach((scene) => {
     const imgs = scene.querySelectorAll<HTMLElement>('[data-scene-img]');
     const thumbs = scene.querySelectorAll<HTMLElement>('[data-scene-thumb]');
@@ -331,25 +387,22 @@ const collectionImages: Record<string, typeof notteAngle> = {
 </script>
 
 <style>
-  /* ── Hero ──
-     Mobile: image on top (portrait crop), copy below on paper.
-     Desktop: copy column + full-height image column (no awkward landscape crop). */
+  /* ── Hero ───────────────────────────────────────────────────────────── */
   .hero {
     position: relative;
-    display: grid;
-    grid-template-rows: auto auto;
-    background: var(--paper);
-  }
-  .hero__media {
-    position: relative;
-    height: 56svh;
-    min-height: 360px;
+    height: calc(100svh - var(--announce-h));
+    min-height: 600px;
+    max-height: 1080px;
     overflow: hidden;
     background: var(--stone-200);
+    isolation: isolate;
   }
+  .hero__media,
   .hero__slide {
     position: absolute;
     inset: 0;
+  }
+  .hero__slide {
     opacity: 0;
     transition: opacity 1.4s var(--ease-in-out);
   }
@@ -360,66 +413,213 @@ const collectionImages: Record<string, typeof notteAngle> = {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transform: scale(1.08);
+    object-position: var(--m-pos);
+    transform: scale(1.06);
     transition: transform 8s linear;
   }
   .hero__slide.is-active .hero__img {
     transform: scale(1);
   }
-  .hero__content {
+  @media (min-width: 900px) {
+    .hero__img {
+      object-position: var(--d-pos);
+    }
+  }
+  /* Soft scrim so the overlaid header stays legible on any image. */
+  .hero__scrim {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      to bottom,
+      color-mix(in oklab, var(--paper) 55%, transparent) 0,
+      transparent calc(var(--header-h) * 2.2)
+    );
+    pointer-events: none;
+  }
+
+  .hero__frame {
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    display: flex;
+    padding-block-end: var(--gutter);
+  }
+
+  /* Glass caption panel — the hero's text component */
+  .panel {
+    position: relative;
+    width: 100%;
+    min-width: 0;
     display: grid;
     gap: var(--s-4);
-    padding-block: var(--s-6) var(--s-4);
-  }
-  .hero__title {
-    font-size: var(--text-3xl);
-    line-height: 0.95;
-    letter-spacing: -0.045em;
-    display: grid;
-  }
-  :lang(fa) .hero__title {
-    line-height: 1.3;
-    letter-spacing: 0;
-  }
-  .hero__title-2 {
-    color: var(--stone-500);
-  }
-  .hero__ctas {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--s-2);
-    margin-block-start: var(--s-2);
-  }
-  .hero__progress {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: var(--s-3);
-    margin-block-start: var(--s-4);
-  }
-  .hero__tab {
-    display: grid;
-    gap: var(--s-2);
-    text-align: start;
-    padding-block: var(--s-2);
-  }
-  .hero__bar {
-    position: relative;
-    height: 2px;
-    background: var(--line-strong);
+    padding: var(--s-5) var(--s-5) var(--s-5);
+    background: color-mix(in oklab, var(--paper) 74%, transparent);
+    backdrop-filter: blur(22px) saturate(1.3);
+    -webkit-backdrop-filter: blur(22px) saturate(1.3);
+    border: 1px solid color-mix(in oklab, var(--white) 55%, transparent);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 1px 0 rgb(255 255 255 / 0.4) inset, 0 24px 48px -24px rgb(20 19 18 / 0.25);
     overflow: hidden;
-    border-radius: 2px;
   }
-  .hero__bar span {
+  .panel__top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--s-3);
+  }
+  .panel__kicker {
+    display: none;
+  }
+  @media (min-width: 600px) {
+    .panel__kicker {
+      display: block;
+    }
+  }
+  .panel__top {
+    justify-content: space-between;
+  }
+  .panel__nav {
+    margin-inline-start: auto;
+    display: flex;
+    align-items: center;
+    gap: var(--s-1);
+    flex: none;
+  }
+  .panel__count {
+    margin-inline-end: var(--s-2);
+    color: var(--stone-600);
+  }
+  .panel__arrow {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-xs);
+    border: 1px solid var(--line);
+    transition:
+      background-color var(--dur-fast),
+      border-color var(--dur-fast);
+  }
+  .panel__arrow:hover {
+    border-color: var(--ink);
+    background: color-mix(in oklab, var(--white) 50%, transparent);
+  }
+  .panel__title {
+    display: grid;
+  }
+  .panel__title-2 {
+    color: var(--stone-600);
+  }
+  .panel__product {
+    display: grid;
+    padding-block: var(--s-3);
+    border-block: 1px solid var(--line);
+  }
+  .panel__item {
+    grid-area: 1 / 1;
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    font-size: var(--text-sm);
+    opacity: 0;
+    transform: translateY(6px);
+    pointer-events: none;
+    transition:
+      opacity var(--dur) var(--ease-out),
+      transform var(--dur) var(--ease-out);
+  }
+  .panel__item.is-active {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+  }
+  .panel__name {
+    font-weight: 500;
+  }
+  .panel__dash {
+    flex: 1;
+    height: 1px;
+    background: var(--line-strong);
+    max-width: 4rem;
+  }
+  .panel__item :global(.panel__go) {
+    margin-inline-start: auto;
+    transition: transform var(--dur-fast) var(--ease-out);
+  }
+  .panel__item:hover :global(.panel__go) {
+    transform: translate(2px, -2px);
+  }
+  .panel__ctas {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--s-2);
+  }
+  .panel__try {
+    width: var(--btn-h);
+    padding-inline: 0 !important;
+  }
+  .panel__try-label {
+    display: none;
+  }
+  .panel__title {
+    font-size: clamp(2.25rem, 1.6rem + 2.8vw, 4rem);
+  }
+  @media (min-width: 600px) {
+    .panel__ctas {
+      grid-template-columns: 1fr 1fr;
+    }
+    .panel__try {
+      width: auto;
+      padding-inline: var(--s-3) !important;
+    }
+    .panel__try-label {
+      display: inline;
+    }
+  }
+  .panel__ctas .btn {
+    padding-inline: var(--s-3);
+  }
+  .panel__ctas .btn--ghost {
+    background: color-mix(in oklab, var(--white) 35%, transparent);
+  }
+  .panel__progress {
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    gap: 2px;
+  }
+  .panel__tab {
+    position: relative;
+    height: 12px;
+    display: flex;
+    align-items: flex-end;
+  }
+  .panel__tab span {
+    position: relative;
+    display: block;
+    width: 100%;
+    height: 2px;
+    background: var(--line);
+    overflow: hidden;
+  }
+  .panel__tab span::after {
+    content: '';
     position: absolute;
     inset: 0;
     background: var(--ink);
     transform: scaleX(0);
     transform-origin: left;
   }
-  :global([dir='rtl']) .hero__bar span {
+  :global([dir='rtl']) .panel__tab span::after {
     transform-origin: right;
   }
-  .hero__tab.is-active .hero__bar span {
+  .panel__tab.is-done span::after {
+    transform: scaleX(1);
+  }
+  .panel__tab.is-active span::after {
     animation: fill var(--hero-dur, 6500ms) linear forwards;
   }
   @keyframes fill {
@@ -427,100 +627,63 @@ const collectionImages: Record<string, typeof notteAngle> = {
       transform: scaleX(1);
     }
   }
-  .hero__tab-label {
-    font-size: var(--text-xs);
-    color: var(--stone-600);
-    transition: color var(--dur-fast);
+
+  @media (max-width: 1023px) {
+    /* keep the panel clear of the floating tab bar */
+    .hero__frame {
+      padding-block-end: calc(var(--tabbar-h) + var(--s-3) * 2 + env(safe-area-inset-bottom));
+    }
   }
-  .hero__tab.is-active .hero__tab-label {
-    color: var(--ink);
-  }
-  @media (min-width: 1024px) {
-    .hero {
-      grid-template-rows: none;
-      grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-      height: calc(100svh - var(--announce-h));
-      min-height: 640px;
-      max-height: 1000px;
+  @media (min-width: 900px) {
+    .panel {
+      width: min(600px, 100%);
+      padding: var(--s-6) var(--s-6) var(--s-6);
+      gap: var(--s-5);
     }
-    .hero__media {
-      grid-column: 2;
-      grid-row: 1;
-      height: auto;
-      margin-block-start: var(--header-h);
-      border-start-start-radius: var(--radius-lg);
-    }
-    .hero__content {
-      grid-column: 1;
-      grid-row: 1;
-      align-content: end;
-      max-width: none;
-      padding-block: calc(var(--header-h) + var(--s-6)) var(--s-7);
-      padding-inline-end: var(--s-7);
-    }
-    .hero__title {
-      font-size: clamp(3.5rem, 1rem + 4.6vw, 7.5rem);
+    .hero__frame {
+      padding-block-end: var(--s-7);
     }
   }
 
-  /* ── Statement ── */
+  /* ── Statement ─────────────────────────────────────────────────────── */
   .statement {
-    display: grid;
-    gap: var(--s-5);
+    row-gap: var(--s-5);
+  }
+  .statement__k {
+    grid-column: 1 / -1;
   }
   .statement__text {
+    grid-column: 1 / -1;
     font-size: var(--text-2xl);
-    line-height: 1.12;
-    letter-spacing: -0.03em;
-    max-width: 22ch;
+    line-height: 1.2;
+    letter-spacing: var(--tracking-tight);
     font-weight: 400;
+    max-width: 26ch;
   }
   :lang(fa) .statement__text {
-    line-height: 1.6;
-    letter-spacing: 0;
-    max-width: 30ch;
+    line-height: 1.75;
+    max-width: 32ch;
   }
-  .statement__text :global(.accent) {
-    font-style: normal;
-  }
-
-  /* ── Section heads ── */
-  .sec-head {
-    display: grid;
-    gap: var(--s-3);
-    margin-block-end: var(--s-7);
-    max-width: 40rem;
-  }
-  .sec-head--row {
-    max-width: var(--max);
-    display: flex;
-    justify-content: space-between;
-    align-items: end;
-    gap: var(--s-5);
-  }
-  .sec-title {
-    font-size: var(--text-2xl);
+  @media (min-width: 1024px) {
+    .statement__k {
+      grid-column: 1 / span 3;
+      padding-block-start: 0.9em;
+    }
+    .statement__text {
+      grid-column: 4 / -1;
+    }
   }
 
-  /* ── Scenes ── */
-  .scenes__head {
-    display: grid;
-    gap: var(--s-3);
-    padding-block-end: var(--s-6);
-  }
-  .scenes__title {
-    font-size: var(--text-2xl);
-    max-width: 16ch;
-  }
+  /* ── Scenes ────────────────────────────────────────────────────────── */
   .scene {
-    padding-block: var(--s-6);
+    padding-block: var(--s-7);
     border-block-start: 1px solid var(--line);
   }
   .scene__inner {
-    display: grid;
-    gap: var(--s-5);
+    row-gap: var(--s-6);
   }
   .scene__gallery {
+    grid-column: 1 / -1;
     display: grid;
     gap: var(--s-2);
   }
@@ -554,7 +717,7 @@ const collectionImages: Record<string, typeof notteAngle> = {
   .scene__thumb {
     width: 56px;
     height: 56px;
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-xs);
     overflow: hidden;
     opacity: 0.5;
     outline: 1px solid transparent;
@@ -576,62 +739,58 @@ const collectionImages: Record<string, typeof notteAngle> = {
     outline-color: var(--ink);
   }
   .scene__info {
+    grid-column: 1 / -1;
     display: grid;
-    gap: var(--s-2);
+    gap: var(--s-3);
     align-content: end;
   }
   .scene__name {
-    font-size: var(--text-display);
-    line-height: 0.88;
-    letter-spacing: -0.055em;
-    margin-block: var(--s-2);
-  }
-  :lang(fa) .scene__name {
-    line-height: 1.2;
-    letter-spacing: 0;
-  }
-  .scene__tagline {
-    font-size: var(--text-lg);
-    letter-spacing: var(--tracking-snug);
-  }
-  .scene__price {
-    font-size: var(--text-sm);
-    color: var(--stone-600);
+    margin-block: var(--s-1) 0;
   }
   .scene__actions {
     display: flex;
     align-items: center;
     gap: var(--s-2);
-    margin-block-start: var(--s-4);
-  }
-  .scene__actions .btn {
-    min-width: 8.5rem;
-  }
-  .scene__circle {
-    width: 52px;
-    height: 52px;
-    border: 1px solid var(--line-strong);
-  }
-  .scene__more {
-    justify-self: start;
     margin-block-start: var(--s-3);
   }
-
+  .scene__buy {
+    flex: 1;
+    max-width: 14rem;
+  }
+  .scene__circle {
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    flex: none;
+    border-radius: var(--radius-xs);
+    border: 1px solid var(--line-strong);
+    transition: border-color var(--dur-fast);
+  }
+  .scene__circle:hover {
+    border-color: var(--ink);
+  }
   @media (min-width: 1024px) {
     .scene {
-      padding-block: var(--s-8);
-    }
-    .scene__inner {
-      grid-template-columns: 7fr 5fr;
-      gap: var(--s-8);
-      align-items: end;
-    }
-    .scene--flip .scene__gallery {
-      order: 2;
+      padding-block: var(--s-9);
     }
     .scene__gallery {
-      grid-template-columns: 1fr 72px;
+      grid-column: 1 / span 7;
+      grid-template-columns: 1fr 64px;
       align-items: start;
+    }
+    .scene__info {
+      grid-column: 9 / span 4;
+      align-self: end;
+      padding-block-end: var(--s-2);
+    }
+    .scene--flip .scene__gallery {
+      grid-column: 6 / span 7;
+      grid-row: 1;
+    }
+    .scene--flip .scene__info {
+      grid-column: 1 / span 4;
+      grid-row: 1;
     }
     .scene__main {
       aspect-ratio: 5 / 4;
@@ -640,12 +799,12 @@ const collectionImages: Record<string, typeof notteAngle> = {
       flex-direction: column;
     }
     .scene__thumb {
-      width: 72px;
-      height: 72px;
+      width: 64px;
+      height: 64px;
     }
   }
 
-  /* ── Mirror CTA ── */
+  /* ── Mirror CTA ────────────────────────────────────────────────────── */
   .mirror-cta {
     background: var(--ink);
     color: var(--stone-100);
@@ -653,17 +812,15 @@ const collectionImages: Record<string, typeof notteAngle> = {
     margin-block: var(--section);
   }
   .mirror-cta__inner {
-    display: grid;
-    gap: var(--s-7);
+    row-gap: var(--s-7);
     align-items: center;
   }
   .mirror-cta__visual {
+    grid-column: 1 / -1;
     position: relative;
     aspect-ratio: 4 / 5;
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius);
     overflow: hidden;
-    max-width: 520px;
-    width: 100%;
   }
   .mirror-cta__img {
     width: 100%;
@@ -676,8 +833,8 @@ const collectionImages: Record<string, typeof notteAngle> = {
   }
   .mirror-cta__corner {
     position: absolute;
-    width: 26px;
-    height: 26px;
+    width: 24px;
+    height: 24px;
     border: 0 solid rgb(255 255 255 / 0.9);
   }
   .mirror-cta__corner:nth-child(1) {
@@ -720,54 +877,46 @@ const collectionImages: Record<string, typeof notteAngle> = {
     position: absolute;
     top: var(--s-3);
     inset-inline-start: var(--s-4);
-    padding: 6px 10px;
-    border-radius: var(--radius-pill);
+    padding: 4px 8px;
+    border-radius: var(--radius-xs);
     background: rgb(20 19 18 / 0.5);
     backdrop-filter: blur(8px);
     color: var(--white);
-    font-family: var(--font-mono);
-    letter-spacing: 0.08em;
+    font-size: 10px;
   }
   .mirror-cta__text {
+    grid-column: 1 / -1;
+  }
+  .mirror-cta__actions {
     display: grid;
     gap: var(--s-4);
     justify-items: start;
-  }
-  .mirror-cta__kicker {
-    color: var(--nude-300);
-  }
-  .mirror-cta__body {
-    color: var(--stone-400);
-    max-width: 44ch;
-    font-size: var(--text-md);
   }
   .mirror-cta__note {
     display: flex;
     align-items: center;
     gap: var(--s-2);
-    font-size: var(--text-xs);
     color: var(--stone-500);
   }
-  @media (min-width: 900px) {
-    .mirror-cta__inner {
-      grid-template-columns: 1fr 1fr;
-      gap: var(--s-9);
-    }
+  @media (min-width: 1024px) {
     .mirror-cta__visual {
-      justify-self: end;
+      grid-column: 2 / span 4;
+    }
+    .mirror-cta__text {
+      grid-column: 7 / span 5;
     }
   }
 
-  /* ── Collections rail ── */
+  /* ── Collections rail ──────────────────────────────────────────────── */
   .rail {
     display: grid;
     grid-auto-flow: column;
-    grid-auto-columns: min(78vw, 420px);
-    gap: var(--s-4);
+    grid-auto-columns: min(76vw, 400px);
+    gap: var(--grid-gap);
     overflow-x: auto;
     scroll-snap-type: x mandatory;
     scroll-padding-inline: var(--gutter);
-    padding-inline: var(--gutter);
+    padding-inline: max(var(--gutter), calc((100vw - var(--max)) / 2));
     padding-block-end: var(--s-4);
     scrollbar-width: none;
   }
@@ -800,34 +949,32 @@ const collectionImages: Record<string, typeof notteAngle> = {
     display: grid;
     gap: var(--s-1);
   }
-  .coll__name {
-    font-size: var(--text-xl);
-  }
-  .coll__story {
-    font-size: var(--text-sm);
-    max-width: 36ch;
+  .coll__info .t-small {
+    max-width: 34ch;
   }
   @media (min-width: 1024px) {
     .rail {
-      grid-auto-columns: calc((min(100vw, var(--max)) - 2 * var(--gutter) - 3 * var(--s-4)) / 3.4);
-      padding-inline: max(var(--gutter), calc((100vw - var(--max)) / 2 + var(--gutter)));
+      grid-auto-columns: calc((min(100vw, var(--max)) - 2 * var(--gutter) - 3 * var(--grid-gap)) / 3.3);
     }
   }
 
-  /* ── Atelier teaser ── */
+  /* ── Atelier teaser ────────────────────────────────────────────────── */
   .atelier {
-    display: grid;
-    gap: var(--s-7);
+    row-gap: var(--s-7);
     align-items: center;
+  }
+  .atelier__media,
+  .atelier__text {
+    grid-column: 1 / -1;
   }
   .atelier__text {
     display: grid;
-    gap: var(--s-5);
     justify-items: start;
   }
   .atelier__steps {
     width: 100%;
     border-block-start: 1px solid var(--line);
+    margin-block-end: var(--s-6);
   }
   .atelier__steps li {
     display: grid;
@@ -835,7 +982,6 @@ const collectionImages: Record<string, typeof notteAngle> = {
     gap: var(--s-4);
     padding-block: var(--s-4);
     border-block-end: 1px solid var(--line);
-    font-size: var(--text-sm);
   }
   .atelier__step-title {
     font-size: var(--text-md);
@@ -843,9 +989,11 @@ const collectionImages: Record<string, typeof notteAngle> = {
     margin-block-end: var(--s-1);
   }
   @media (min-width: 1024px) {
-    .atelier {
-      grid-template-columns: 1fr 1fr;
-      gap: var(--s-9);
+    .atelier__media {
+      grid-column: 1 / span 5;
+    }
+    .atelier__text {
+      grid-column: 7 / span 6;
     }
   }
 </style>

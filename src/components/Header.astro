@@ -111,7 +111,7 @@ const active = (p: string) => route.replace(/\/$/, '') === p;
     background: var(--ink);
     color: var(--paper);
     padding: var(--s-2) var(--s-4);
-    border-radius: var(--radius-pill);
+    border-radius: var(--radius-xs);
   }
   .skip:focus {
     top: var(--s-2);
@@ -198,7 +198,7 @@ const active = (p: string) => route.replace(/\/$/, '') === p;
     height: 44px;
     margin-inline-start: -10px;
     padding-inline: 10px;
-    border-radius: var(--radius-pill);
+    border-radius: var(--radius-xs);
   }
   .header__menu svg {
     width: 20px;
@@ -237,8 +237,8 @@ const active = (p: string) => route.replace(/\/$/, '') === p;
   }
   .header__lang {
     padding: var(--s-2) var(--s-3);
-    border-radius: var(--radius-pill);
-    display: none;
+    border-radius: var(--radius-xs);
+    display: inline-flex;
   }
   .header__lang:hover {
     background: color-mix(in oklab, var(--ink) 6%, transparent);
@@ -248,6 +248,11 @@ const active = (p: string) => route.replace(/\/$/, '') === p;
   }
   .header__bag {
     position: relative;
+  }
+  @media (max-width: 1023px) {
+    :global(body.has-tabbar) .header__bag {
+      display: none;
+    }
   }
   .header__count {
     position: absolute;
@@ -266,8 +271,7 @@ const active = (p: string) => route.replace(/\/$/, '') === p;
   }
 
   @media (min-width: 640px) {
-    .header__menu .label,
-    .header__lang {
+    .header__menu .label {
       display: inline-flex;
     }
   }

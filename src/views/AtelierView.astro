@@ -17,8 +17,8 @@ const variants = ['lines', 'arc', 'grid'] as const;
 <BaseLayout locale={locale} title={t('atelier.title')} page="atelier">
   <section class="hero container">
     <p class="label accent" data-reveal>{t('atelier.kicker')}</p>
-    <h1 class="hero__title" data-reveal>{t('atelier.title')}</h1>
-    <p class="lede hero__lede" data-reveal>{t('atelier.lede')}</p>
+    <h1 class="t-display hero__title" data-reveal>{t('atelier.title')}</h1>
+    <p class="t-lead hero__lede" data-reveal>{t('atelier.lede')}</p>
   </section>
 
   <section class="container" data-reveal>
@@ -48,7 +48,7 @@ const variants = ['lines', 'arc', 'grid'] as const;
             <Placeholder label={pick(s.title, locale)} caption={t('common.placeholder')} tone={tones[i]} variant={variants[i % 3]} ratio="4 / 3" />
             <div class="step__text">
               <span class="mono muted">{locale === 'fa' ? num(Number(s.n), 'fa').padStart(2, '۰') : s.n}</span>
-              <h2 class="step__title">{pick(s.title, locale)}</h2>
+              <h2 class="t-h3 step__title">{pick(s.title, locale)}</h2>
               <p class="muted">{pick(s.body, locale)}</p>
             </div>
           </li>
@@ -71,15 +71,6 @@ const variants = ['lines', 'arc', 'grid'] as const;
     display: grid;
     gap: var(--s-4);
     padding-block: var(--s-8) var(--s-7);
-  }
-  .hero__title {
-    font-size: var(--text-display);
-    line-height: 0.88;
-    letter-spacing: -0.055em;
-  }
-  :lang(fa) .hero__title {
-    line-height: 1.2;
-    letter-spacing: 0;
   }
   .hero__lede {
     max-width: 34ch;
@@ -119,9 +110,6 @@ const variants = ['lines', 'arc', 'grid'] as const;
     display: grid;
     gap: var(--s-2);
     align-content: center;
-  }
-  .step__title {
-    font-size: var(--text-xl);
   }
   .closing {
     display: grid;

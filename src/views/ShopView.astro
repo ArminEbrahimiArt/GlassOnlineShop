@@ -29,8 +29,11 @@ const filters = [
 <BaseLayout locale={locale} title={t('shop.title')} page="shop">
   <section class="shop container">
     <header class="shop__head">
-      <h1 class="shop__title" data-reveal>{t('shop.title')}</h1>
-      <p class="muted" data-reveal><span data-count>{t('shop.count', { n: num(products.length, locale) })}</span></p>
+      <div>
+        <p class="label muted" data-reveal>{t('nav.shop')}</p>
+        <h1 class="t-h1 shop__title" data-reveal>{t('shop.title')}</h1>
+      </div>
+      <p class="t-small muted" data-reveal><span data-count>{t('shop.count', { n: num(products.length, locale) })}</span></p>
     </header>
 
     <div class="shop__bar">
@@ -105,7 +108,7 @@ const filters = [
 
 <style>
   .shop {
-    padding-block-start: var(--s-7);
+    padding-block: var(--s-7) var(--section);
   }
   .shop__head {
     display: flex;
@@ -114,12 +117,8 @@ const filters = [
     gap: var(--s-4);
     padding-block-end: var(--s-6);
   }
-  .shop__title {
-    font-size: var(--text-3xl);
-    letter-spacing: -0.05em;
-  }
-  :lang(fa) .shop__title {
-    letter-spacing: 0;
+  .shop__head .label {
+    margin-block-end: var(--s-2);
   }
   .shop__bar {
     position: sticky;
@@ -130,7 +129,7 @@ const filters = [
     align-items: center;
     gap: var(--s-4);
     padding-block: var(--s-3);
-    margin-block-end: var(--s-5);
+    margin-block-end: var(--s-6);
     background: color-mix(in oklab, var(--paper) 92%, transparent);
     backdrop-filter: blur(12px);
     border-block-end: 1px solid var(--line);
@@ -150,8 +149,9 @@ const filters = [
     flex: none;
     height: 36px;
     padding-inline: var(--s-4);
-    border-radius: var(--radius-pill);
-    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-xs);
+    border: 1px solid transparent;
+    color: var(--stone-600);
     font-size: var(--text-sm);
     transition:
       background-color var(--dur-fast),
@@ -159,7 +159,7 @@ const filters = [
       border-color var(--dur-fast);
   }
   .chip:hover {
-    border-color: var(--ink);
+    color: var(--ink);
   }
   .chip[aria-pressed='true'] {
     background: var(--ink);
@@ -189,7 +189,7 @@ const filters = [
   .grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--s-7) var(--s-3);
+    gap: var(--s-6) var(--grid-gap);
   }
   .grid > :global([hidden]) {
     display: none;
@@ -222,7 +222,7 @@ const filters = [
   @media (min-width: 1024px) {
     .grid {
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: var(--s-8) var(--s-4);
+      gap: var(--s-8) var(--grid-gap);
     }
   }
 </style>

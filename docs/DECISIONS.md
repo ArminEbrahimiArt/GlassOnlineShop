@@ -63,3 +63,32 @@ head yaw realistically and the frames are stylised. Phase 4 moves to 3D GLB fram
 **Context:** `astro check` does not support TypeScript 7 yet.
 **Decision:** Pin `typescript@^6` as a dev dependency.
 **Consequences:** Revisit when Astro's type-checking supports TS 7 (see `@astrojs/ts-content-mapper`).
+
+### ADR-010 — Lucide icons (the shadcn/ui icon set) (2026-10-16)
+
+**Context:** The client wants a single, clean, consistent icon family, and asked for "the shadcn icons".
+**Decision:** Use [Lucide](https://lucide.dev), which shadcn/ui uses, through `lucide-static`. Icons are inlined as SVG at build time by `Icon.astro`. Stroke is 1.5 px (finer than Lucide's default of 2, to suit the luxury typography).
+**Consequences:** No runtime icon JS. Any of roughly 2,000 Lucide icons is one line in the `map` inside `Icon.astro`. If a React island is added later, `lucide-react` gives identical glyphs.
+
+### ADR-011 — Near-square shapes and a modular type system (2026-10-16)
+
+**Context:** Client feedback: corners were too round, and type and spacing felt ad hoc.
+**Decision:** Radii are 2–6 px; circles are kept only for swatches and dots. Type uses a 1.25 modular scale with named roles. Spacing uses an 8-pt grid. Layout uses a 12/8/4-column grid. Every section header uses `SectionHead`.
+**Consequences:** One place to tune rhythm. New UI must use the role classes and tokens, not raw sizes (see DESIGN-SYSTEM.md).
+
+### ADR-012 — One Euro filter + per-frame detection for try-on (2026-10-16)
+
+**Context:** Tracking should feel steadier and faster on phones.
+**Decision:**
+- Smoothing: a One Euro filter per pose channel.
+- Pose: computed in 3D from landmark z (width, yaw, pitch).
+- Detection: once per decoded frame via `requestVideoFrameCallback`, at 640×480.
+- Loading: preloaded on user intent, with the camera shown before the model is ready.
+
+**Consequences:** Lower CPU and GPU cost, less jitter, and lower perceived latency. The overlay is still 2D artwork; true 3D frames are Phase 4.
+
+### ADR-013 — App-style bottom navigation on mobile (2026-10-16)
+
+**Context:** The client's mobile reference is an app-like storefront with a bottom nav and a bottom buy bar.
+**Decision:** On viewports under 1024 px, a floating ink tab bar (5 destinations). Product pages swap it for a buy bar with the live total. The header bag icon hides while the tab bar is shown.
+**Consequences:** Primary actions sit in thumb reach. Pages reserve bottom space through `body.has-bar`. New pages get the tab bar by default.

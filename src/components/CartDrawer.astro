@@ -25,7 +25,7 @@ const t = useT(locale);
     <div class="drawer__body">
       <ul class="drawer__list" role="list" data-cart-list></ul>
       <div class="drawer__empty" data-cart-empty>
-        <p class="lede">{t('cart.empty')}</p>
+        <p class="t-lead">{t('cart.empty')}</p>
         <a class="btn btn--primary" href={href('/shop', locale)}>{t('cart.emptyCta')}</a>
       </div>
     </div>
@@ -216,7 +216,7 @@ const t = useT(locale);
     display: inline-flex;
     align-items: center;
     border: 1px solid var(--line-strong);
-    border-radius: var(--radius-pill);
+    border-radius: var(--radius-xs);
     height: 34px;
   }
   .qty button {
@@ -240,7 +240,7 @@ const t = useT(locale);
     width: max-content;
     max-width: calc(100% - 2 * var(--gutter));
     padding: var(--s-3) var(--s-5);
-    border-radius: var(--radius-pill);
+    border-radius: var(--radius-xs);
     background: var(--ink);
     color: var(--paper);
     font-size: var(--text-sm);

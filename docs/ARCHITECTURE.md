@@ -1,6 +1,6 @@
 # Architecture
 
-_Last updated: 2026-10-16 · Phase 1_
+_Last updated: 2026-10-16 · Phase 1.1_
 
 ## 1. Overview
 
@@ -52,11 +52,16 @@ backend/CMS without changing the views (see §7).
     │   └── utils.ts               Locale, L10n, useT(), pick(), href(), asset(), formatPrice(), num(), localDigits()
     ├── lib/
     │   ├── frames.ts              parametric front-view SVG frame renderer (try-on, measurements, colourways)
+    │   ├── face-pose.ts           landmarks → pose (bridge, 3D width, roll/yaw/pitch) + One Euro PoseFilter
     │   └── catalog.ts             ClientCatalog type, readCatalog(), formatPriceClient()
     ├── layouts/
-    │   └── BaseLayout.astro       <html lang/dir>, fonts, meta/hreflang, Header/Footer/Cart/TryOn, #catalog JSON
+    │   └── BaseLayout.astro       <html lang/dir>, fonts, meta/hreflang, Header/Footer/TabBar/Cart/TryOn, #catalog JSON
+    │                              props: overlayHeader, tabbar (default true), bottomBar (page has own fixed bar)
     ├── components/                shared UI
     │   ├── Header.astro           announcement bar, sticky header, full-screen menu <dialog>, language switch
+    │   ├── TabBar.astro           mobile (<1024) floating bottom navigation with bag count
+    │   ├── SectionHead.astro      standard section header (label, title, lead, action)
+    │   ├── Lightbox.astro         full-screen phone-style image gallery (swipe, zoom, swipe-down close)
     │   ├── Footer.astro           newsletter, link columns, large wordmark, legal
     │   ├── CartDrawer.astro       bag <dialog> + item <template> + toast
     │   ├── TryOn.astro            Virtual Mirror <dialog> (stage + panel)
@@ -65,7 +70,7 @@ backend/CMS without changing the views (see §7).
     │   ├── Dimensions.astro       technical drawing + measurements table
     │   ├── Placeholder.astro      labelled art-directed placeholder for missing photography
     │   ├── Wordmark.astro         typographic logo (no logo yet)
-    │   └── Icon.astro             1.5px stroke icon set
+    │   └── Icon.astro             Lucide (shadcn) icons via lucide-static, inlined at build
     ├── scripts/                   client modules
     │   ├── ui.ts                  header scroll state, menu, reveal-on-scroll, newsletter
     │   ├── cart.ts                bag store (localStorage), drawer rendering, add-to-cart hooks, toast
@@ -74,9 +79,9 @@ backend/CMS without changing the views (see §7).
     │   ├── tokens.css             design tokens (see DESIGN-SYSTEM.md)
     │   └── global.css             reset, type primitives, buttons, layout, reveal
     ├── views/                     page bodies, each takes `locale`
-    │   ├── HomeView.astro         hero slider, statement, product scenes, anatomy, mirror CTA, collections, atelier
+    │   ├── HomeView.astro         full-bleed hero slideshow + glass caption panel, statement, product scenes, anatomy, mirror CTA, collections, atelier
     │   ├── ShopView.astro         listing + filter chips + sort
-    │   ├── ProductView.astro      gallery, info, colourways, accordion, anatomy, lifestyle, measurements, related, buy bar
+    │   ├── ProductView.astro      gallery (→ Lightbox), info, qty, colourways, accordion, anatomy, lifestyle, measurements, related, mobile buy bar
     │   ├── CollectionsView.astro  collections with their products / coming-soon
     │   ├── AtelierView.astro      brand story, numbers, 6-step process
     │   ├── TryOnView.astro        Virtual Mirror landing + frame picker
@@ -129,31 +134,40 @@ src/data/*.ts  ──(import at build)──►  views (.astro)  ──►  stat
 ```
 
 - **Bag.** `localStorage["sz-cart"] = [{slug, colour, qty}]`. If storage is unavailable, it falls back to memory. It emits a `cart:change` event.
-- **Hooks.** `[data-add-to-cart][data-slug][data-colour?]` adds an item, and the colour comes from the nearest `[data-product-scope] input[name=colour]:checked` if it is not given. `[data-cart-open]` opens the bag. `[data-tryon-open][data-slug?][data-autostart?]` opens the mirror.
+- **Hooks.** `[data-add-to-cart][data-slug][data-colour?]` adds an item, and the colour comes from the nearest `[data-product-scope] input[name=colour]:checked` if it is not given. With `data-use-qty`, the quantity comes from `[data-qty-scope] [data-qty-value]` (the product page stepper). `data-no-drawer` adds without opening the bag (card quick-add). `[data-lightbox-open="<id>"][data-index]` opens a Lightbox. `[data-cart-open]` opens the bag. `[data-tryon-open][data-slug?][data-autostart?]` opens the mirror.
 
 ## 6. Virtual Mirror (live try-on)
 
 **Goal:** show any frame on the visitor's face, live, on a phone, without uploading anything.
 
 ```
-getUserMedia(front camera) ─► <video> (CSS mirrored)
-                                 │ each new frame
+intent (hover/touch a try-on button, or open the mirror) ─► preload WASM + model (shared promise)
+
+getUserMedia(front camera, 640×480 @30) ─► <video> (CSS mirrored), shown immediately
+                                 │ requestVideoFrameCallback: once per decoded frame
                                  ▼
              MediaPipe FaceLandmarker.detectForVideo()  (WASM, GPU→CPU fallback, 478 landmarks)
-                                 │
-          eye corners 33/263 → centre + roll angle; face edges 127/356 → width
-                                 │  exponential smoothing (k=0.45), snap on large jumps
+                                 │  lib/face-pose.ts → poseFrom():
+                                 │    x  = nose bridge 168 (60%) + eye midpoint (40%)
+                                 │    y  = eye line (centres of 33/133 and 263/362)
+                                 │    w  = 3D distance temple 127 ↔ 356 × 1.04 (stable when the head turns)
+                                 │    roll = eye line angle; yaw = atan2(Δz, Δxy) of temples; pitch from 10/152
+                                 │  PoseFilter: One Euro filter per channel; keep last pose ≤3 dropped frames
                                  ▼
-          <canvas> overlay (same size as video, CSS mirrored): drawImage(frame SVG) with shadow
+          <canvas> overlay at 2× video size (CSS mirrored):
+          translate → rotate(roll) → scale(cos yaw ≥.55, cos pitch ≥.8) → drawImage(frame SVG) + shadow
 ```
 
 - **Frame artwork** comes from `lib/frames.ts`. Each product has `geometry` (shape and rim thickness) and each colourway has a `style` (acetate colour and opacity, lens tint or gradient, metal). The same renderer draws the measurement diagram, so the mirror and the spec drawing always agree. The lens holes use the non-zero winding rule: the lens sub-paths are reversed.
-- **Calibration constants** live at the top of `scripts/tryon.ts`: `FRAME_EYE_Y` sets where the eye line sits inside the SVG, and `WIDTH_FACTOR` scales the frame width against face width.
+- **Calibration constants:**
+  - `FRAME_EYE_Y` and `OVERLAY_SCALE` live at the top of `scripts/tryon.ts`. `FRAME_EYE_Y` sets where the eye line sits inside the SVG.
+  - `WIDTH_FACTOR` and the filter tuning live in `lib/face-pose.ts`. `WIDTH_FACTOR` scales the frame width against face width.
+- **Testing without a camera:** generate a Y4M video of a face and launch Chromium with `--use-fake-device-for-media-stream --use-file-for-fake-video-capture=face.y4m`. That is how v1.1 was verified.
 - **Self-hosted runtime.** `scripts/fetch-mediapipe.mjs` runs before `dev` and `build`. It copies the WASM from `node_modules` and downloads `face_landmarker.task` into `public/mediapipe/`. Nothing loads from Google or a CDN at runtime (ADR-006). The JS is lazy-imported, so about 13 MB of WASM plus the 3.6 MB model is fetched only when the user starts the camera or uploads a photo.
 - **States** (`[data-state]` on the stage): `idle → loading → searching ⇄ tracking → still`, plus `photo` for the upload fallback, which uses `detect()` in IMAGE mode.
 - **Capture.** Composites the mirrored video frame with the overlay into a JPEG. **Save** uses the native share sheet when `navigator.canShare({files})` is available, and otherwise downloads the file.
 - **Privacy.** The camera stops when the dialog closes or the tab is hidden. No frames leave the device.
-- **Limits in Phase 1.** The overlay is 2D (roll and scale only, no yaw or 3D temples). The artwork is parametric, not photographic. Phase 4 upgrades this to 3D GLB frames with the face transformation matrix (see ROADMAP).
+- **Limits in Phase 1.1.** The overlay is 2D artwork with roll, scale and yaw/pitch foreshortening. There are no 3D temples or occlusion. The artwork is parametric, not photographic. Phase 4 upgrades this to 3D GLB frames with the face transformation matrix (see ROADMAP).
 
 ## 7. How Phase 3 plugs in (backend)
 

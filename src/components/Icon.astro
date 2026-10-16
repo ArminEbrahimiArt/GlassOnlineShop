@@ -1,50 +1,74 @@
 ---
 /**
- * Minimal 1.5px-stroke icon set (24×24 grid). Add new icons to `paths`.
- * Icons that indicate direction get `flip` so they mirror in RTL.
+ * Icon set: Lucide, the icon family used by shadcn/ui (ADR-010).
+ * Icons are inlined at build time from `lucide-static`, so they cost no
+ * runtime JS. Every icon shares the same 24px grid, round caps and a 1.5px
+ * stroke, for one consistent, refined family.
+ *
+ * Add an icon: map a short name to its Lucide export name below.
+ * Browse names at https://lucide.dev/icons
+ * Icons that point in a direction get `flip` so they mirror in RTL.
  */
+import * as lucide from 'lucide-static';
+
+const map = {
+  menu: 'Menu',
+  close: 'X',
+  bag: 'ShoppingBag',
+  arrow: 'ArrowRight',
+  arrowLeft: 'ArrowLeft',
+  arrowUpRight: 'ArrowUpRight',
+  chevronLeft: 'ChevronLeft',
+  chevronRight: 'ChevronRight',
+  chevronDown: 'ChevronDown',
+  plus: 'Plus',
+  minus: 'Minus',
+  camera: 'Camera',
+  info: 'Info',
+  mirror: 'ScanFace',
+  glasses: 'Glasses',
+  search: 'Search',
+  upload: 'ImageUp',
+  download: 'Download',
+  share: 'Share',
+  globe: 'Globe',
+  check: 'Check',
+  sparkle: 'Sparkles',
+  lock: 'Lock',
+  home: 'House',
+  store: 'Store',
+  expand: 'Expand',
+  zoom: 'ZoomIn',
+  truck: 'Truck',
+  shield: 'ShieldCheck',
+  hand: 'Hand',
+} as const;
+
+export type IconName = keyof typeof map;
+
 interface Props {
-  name: keyof typeof paths;
+  name: IconName;
   size?: number;
   class?: string;
   flip?: boolean;
+  stroke?: number;
 }
-const paths = {
-  menu: '<path d="M3 8h18M3 16h18"/>',
-  close: '<path d="M6 6l12 12M18 6L6 18"/>',
-  bag: '<path d="M5 8h14l-1 12H6L5 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/>',
-  arrow: '<path d="M4 12h16M14 6l6 6-6 6"/>',
-  arrowUpRight: '<path d="M7 17L17 7M8 7h9v9"/>',
-  chevronLeft: '<path d="M15 5l-7 7 7 7"/>',
-  chevronRight: '<path d="M9 5l7 7-7 7"/>',
-  chevronDown: '<path d="M5 9l7 7 7-7"/>',
-  plus: '<path d="M12 5v14M5 12h14"/>',
-  minus: '<path d="M5 12h14"/>',
-  camera: '<path d="M4 8h3l2-2.5h6L17 8h3v11H4V8z"/><circle cx="12" cy="13" r="3.5"/>',
-  info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/>',
-  mirror:
-    '<ellipse cx="12" cy="11" rx="7" ry="8.5"/><path d="M8 11.5h3M13 11.5h3M11 11.5c.7-.5 1.3-.5 2 0"/><path d="M9 21h6"/>',
-  search: '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/>',
-  upload: '<path d="M12 16V4M7 9l5-5 5 5M4 16v4h16v-4"/>',
-  download: '<path d="M12 4v12M7 11l5 5 5-5M4 20h16"/>',
-  globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18"/>',
-  check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
-  sparkle: '<path d="M12 3v6M12 15v6M3 12h6M15 12h6"/>',
-  lock: '<rect x="5" y="10" width="14" height="10" rx="1.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
-} as const;
-const { name, size = 20, class: cls, flip = false } = Astro.props;
+const { name, size = 20, class: cls, flip = false, stroke = 1.5 } = Astro.props;
+const raw = (lucide as Record<string, string>)[map[name]] ?? '';
+// Keep only the drawing (children of <svg>); we render our own wrapper.
+const inner = raw.slice(raw.indexOf('>') + 1, raw.lastIndexOf('</svg>'));
 ---
 
 <svg
-  class:list={[cls, { 'flip-rtl': flip }]}
+  class:list={['icon', cls, { 'flip-rtl': flip }]}
   width={size}
   height={size}
   viewBox="0 0 24 24"
   fill="none"
   stroke="currentColor"
-  stroke-width="1.5"
+  stroke-width={stroke}
   stroke-linecap="round"
   stroke-linejoin="round"
   aria-hidden="true"
-  set:html={paths[name]}
+  set:html={inner}
 />

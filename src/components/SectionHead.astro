@@ -1,0 +1,80 @@
+---
+/**
+ * Standard section header: overline label → title → optional lead, with an
+ * optional trailing action link. Every section on the site uses this so the
+ * vertical rhythm is identical everywhere:
+ *   label  —8px→  title  —16px→  lead        then --section-head → content
+ */
+import Icon from './Icon.astro';
+
+interface Props {
+  kicker?: string;
+  title: string;
+  lead?: string;
+  action?: { href: string; label: string };
+  /** h1 for page titles, h2 (default) for sections */
+  as?: 'h1' | 'h2';
+  size?: 'page' | 'section';
+  tone?: 'ink' | 'paper';
+  align?: 'start' | 'center';
+  class?: string;
+}
+const { kicker, title, lead, action, as: Tag = 'h2', size = 'section', tone = 'ink', align = 'start', class: cls } = Astro.props;
+---
+
+<header class:list={['sh', `sh--${tone}`, `sh--${align}`, cls]} data-reveal>
+  <div class="sh__text">
+    {kicker && <p class="label sh__kicker">{kicker}</p>}
+    <Tag class:list={['sh__title', size === 'page' ? 't-h1' : 't-h2']}>{title}</Tag>
+    {lead && <p class="t-lead sh__lead">{lead}</p>}
+  </div>
+  {
+    action && (
+      <a class="link label sh__action" href={action.href}>
+        {action.label}
+        <Icon name="arrow" size={14} flip />
+      </a>
+    )
+  }
+</header>
+
+<style>
+  .sh {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--s-4) var(--s-6);
+    margin-block-end: var(--section-head);
+  }
+  .sh__text {
+    display: grid;
+    gap: var(--s-2);
+    max-width: 44rem;
+  }
+  .sh__kicker {
+    color: var(--stone-600);
+  }
+  .sh__lead {
+    margin-block-start: var(--s-2);
+    color: var(--stone-600);
+    max-width: 36rem;
+  }
+  .sh__action {
+    flex: none;
+    white-space: nowrap;
+  }
+  .sh--paper .sh__kicker {
+    color: var(--nude-300);
+  }
+  .sh--paper .sh__lead {
+    color: var(--stone-400);
+  }
+  .sh--center {
+    justify-content: center;
+    text-align: center;
+  }
+  .sh--center .sh__text {
+    justify-items: center;
+  }
+</style>

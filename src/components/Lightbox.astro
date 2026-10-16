@@ -1,0 +1,354 @@
+---
+/**
+ * Full-screen image viewer that behaves like a phone's photo gallery:
+ *  - swipe (native scroll-snap) / arrow buttons / ← → keys to page
+ *  - double-tap or double-click to zoom 2.5×, then drag to pan
+ *  - swipe down (when not zoomed) or Esc to close
+ * Open it from any element: [data-lightbox-open="<id>"][data-index="<n>"].
+ */
+import { getImage } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+import Icon from './Icon.astro';
+import { num, useT, type Locale } from '@/i18n/utils';
+
+interface Props {
+  id: string;
+  images: { src: ImageMetadata; alt: string }[];
+  locale: Locale;
+}
+const { id, images, locale } = Astro.props;
+const t = useT(locale);
+const full = await Promise.all(
+  images.map((im) => getImage({ src: im.src, widths: [800, 1200, 1600], format: 'webp', quality: 86 })),
+);
+const thumbs = await Promise.all(images.map((im) => getImage({ src: im.src, width: 160, height: 160, fit: 'cover', format: 'webp' })));
+---
+
+<dialog class="lb" id={id} data-lightbox aria-label={t('gallery.open')}>
+  <div class="lb__bar">
+    <span class="mono lb__count"><span data-lb-index>{num(1, locale)}</span> / {num(images.length, locale)}</span>
+    <span class="t-caption lb__hint">{t('gallery.zoom')}</span>
+    <button class="lb__icon" type="button" data-lb-close aria-label={t('gallery.close')}>
+      <Icon name="close" size={22} />
+    </button>
+  </div>
+
+  <div class="lb__track" data-lb-track>
+    {
+      images.map((im, i) => (
+        <figure class="lb__slide" data-lb-slide>
+          <img src={full[i].src} srcset={full[i].srcSet.attribute} sizes="100vw" alt={im.alt} loading="lazy" decoding="async" draggable="false" />
+        </figure>
+      ))
+    }
+  </div>
+
+  <button class="lb__nav lb__nav--prev" type="button" data-lb-prev aria-label={t('common.prev')}>
+    <Icon name="chevronLeft" size={24} flip />
+  </button>
+  <button class="lb__nav lb__nav--next" type="button" data-lb-next aria-label={t('common.next')}>
+    <Icon name="chevronRight" size={24} flip />
+  </button>
+
+  <div class="lb__thumbs" role="tablist">
+    {
+      images.map((_, i) => (
+        <button class:list={['lb__thumb', { 'is-active': i === 0 }]} type="button" data-lb-thumb={i} aria-label={`${i + 1}`}>
+          <img src={thumbs[i].src} alt="" width="64" height="64" loading="lazy" />
+        </button>
+      ))
+    }
+  </div>
+</dialog>
+
+<script>
+  document.querySelectorAll<HTMLDialogElement>('[data-lightbox]').forEach((lb) => {
+    const track = lb.querySelector<HTMLElement>('[data-lb-track]')!;
+    const slides = [...lb.querySelectorAll<HTMLElement>('[data-lb-slide]')];
+    const thumbs = [...lb.querySelectorAll<HTMLElement>('[data-lb-thumb]')];
+    const indexEl = lb.querySelector('[data-lb-index]');
+    const fmt = new Intl.NumberFormat(document.documentElement.lang === 'fa' ? 'fa-IR' : 'en-US');
+    const rtl = document.documentElement.dir === 'rtl';
+    let current = 0;
+
+    const slideWidth = () => track.clientWidth;
+    const goTo = (i: number, smooth = true) => {
+      current = Math.max(0, Math.min(slides.length - 1, i));
+      // scrollLeft is negative in RTL scroll containers
+      track.scrollTo({ left: (rtl ? -1 : 1) * current * slideWidth(), behavior: smooth ? 'smooth' : 'instant' });
+      sync();
+    };
+    const sync = () => {
+      if (indexEl) indexEl.textContent = fmt.format(current + 1);
+      thumbs.forEach((t, k) => t.classList.toggle('is-active', k === current));
+    };
+    track.addEventListener(
+      'scroll',
+      () => {
+        const i = Math.round(Math.abs(track.scrollLeft) / slideWidth());
+        if (i !== current) {
+          slides[current]?.classList.remove('is-zoomed');
+          current = i;
+          sync();
+        }
+      },
+      { passive: true },
+    );
+
+    // Openers anywhere on the page
+    document.querySelectorAll<HTMLElement>(`[data-lightbox-open="${lb.id}"]`).forEach((el) =>
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        lb.showModal();
+        document.documentElement.style.overflow = 'hidden';
+        requestAnimationFrame(() => goTo(Number(el.dataset.index ?? 0), false));
+      }),
+    );
+    const close = () => lb.close();
+    lb.addEventListener('close', () => {
+      document.documentElement.style.overflow = '';
+      slides.forEach((s) => s.classList.remove('is-zoomed'));
+    });
+    lb.querySelector('[data-lb-close]')!.addEventListener('click', close);
+    lb.querySelector('[data-lb-prev]')!.addEventListener('click', () => goTo(current - 1));
+    lb.querySelector('[data-lb-next]')!.addEventListener('click', () => goTo(current + 1));
+    thumbs.forEach((t, k) => t.addEventListener('click', () => goTo(k)));
+    lb.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight') goTo(current + (rtl ? -1 : 1));
+      if (e.key === 'ArrowLeft') goTo(current + (rtl ? 1 : -1));
+    });
+
+    // Zoom: double-click / double-tap toggles; the zoomed slide scrolls to pan.
+    const toggleZoom = (slide: HTMLElement, x: number, y: number) => {
+      const img = slide.querySelector('img')!;
+      if (slide.classList.contains('is-zoomed')) {
+        slide.classList.remove('is-zoomed');
+        return;
+      }
+      const r = img.getBoundingClientRect();
+      const fx = (x - r.left) / r.width;
+      const fy = (y - r.top) / r.height;
+      slide.classList.add('is-zoomed');
+      requestAnimationFrame(() => {
+        slide.scrollLeft = fx * slide.scrollWidth - slide.clientWidth / 2;
+        slide.scrollTop = fy * slide.scrollHeight - slide.clientHeight / 2;
+      });
+    };
+    let lastTap = 0;
+    slides.forEach((slide) => {
+      slide.addEventListener('dblclick', (e) => toggleZoom(slide, e.clientX, e.clientY));
+      slide.addEventListener('touchend', (e) => {
+        const now = Date.now();
+        if (now - lastTap < 280 && e.changedTouches.length === 1) {
+          e.preventDefault();
+          const p = e.changedTouches[0];
+          toggleZoom(slide, p.clientX, p.clientY);
+          lastTap = 0;
+        } else lastTap = now;
+      });
+    });
+
+    // Swipe down to close (phone-gallery gesture), only when not zoomed.
+    let y0: number | null = null;
+    let x0 = 0;
+    track.addEventListener(
+      'touchstart',
+      (e) => {
+        if (slides[current]?.classList.contains('is-zoomed') || e.touches.length > 1) return (y0 = null);
+        y0 = e.touches[0].clientY;
+        x0 = e.touches[0].clientX;
+      },
+      { passive: true },
+    );
+    track.addEventListener(
+      'touchmove',
+      (e) => {
+        if (y0 === null) return;
+        const dy = e.touches[0].clientY - y0;
+        const dx = Math.abs(e.touches[0].clientX - x0);
+        if (dy > 0 && dy > dx) {
+          track.style.transform = `translateY(${dy * 0.6}px)`;
+          lb.style.setProperty('--lb-fade', String(Math.max(0.3, 1 - dy / 400)));
+        }
+      },
+      { passive: true },
+    );
+    track.addEventListener('touchend', (e) => {
+      if (y0 === null) return;
+      const dy = e.changedTouches[0].clientY - y0;
+      track.style.transform = '';
+      lb.style.removeProperty('--lb-fade');
+      if (dy > 120) close();
+      y0 = null;
+    });
+  });
+</script>
+
+<style>
+  .lb {
+    --lb-bg: #0e0d0c;
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: color-mix(in oklab, var(--lb-bg) calc(var(--lb-fade, 1) * 100%), transparent);
+    color: var(--stone-100);
+    display: none;
+    grid-template-rows: auto 1fr auto;
+    opacity: 0;
+    transition:
+      opacity var(--dur) var(--ease-out),
+      overlay var(--dur) allow-discrete,
+      display var(--dur) allow-discrete;
+  }
+  .lb[open] {
+    display: grid;
+    opacity: 1;
+  }
+  @starting-style {
+    .lb[open] {
+      opacity: 0;
+    }
+  }
+  .lb::backdrop {
+    background: transparent;
+  }
+  .lb__bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-4);
+    padding: var(--s-2) var(--s-2) var(--s-2) var(--gutter);
+    padding-inline: var(--gutter) var(--s-2);
+    padding-block-start: calc(var(--s-2) + env(safe-area-inset-top));
+  }
+  .lb__count {
+    color: var(--stone-300);
+  }
+  .lb__hint {
+    color: var(--stone-500);
+  }
+  .lb__icon {
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-xs);
+    color: var(--white);
+  }
+  .lb__icon:hover {
+    background: rgb(255 255 255 / 0.08);
+  }
+  .lb__track {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    overscroll-behavior: contain;
+    scrollbar-width: none;
+    transition: transform var(--dur) var(--ease-out);
+    min-height: 0;
+  }
+  .lb__track::-webkit-scrollbar {
+    display: none;
+  }
+  .lb__slide {
+    position: relative;
+    scroll-snap-align: center;
+    scroll-snap-stop: always;
+    overflow: hidden;
+    min-height: 0;
+    touch-action: pan-x pan-y;
+    cursor: zoom-in;
+  }
+  .lb__slide img {
+    position: absolute;
+    inset: 0 var(--s-2);
+    width: calc(100% - var(--s-4));
+    height: 100%;
+    object-fit: contain;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .lb__slide.is-zoomed {
+    overflow: auto;
+    cursor: zoom-out;
+    scrollbar-width: none;
+  }
+  .lb__slide.is-zoomed img {
+    position: static;
+    width: 250%;
+    height: auto;
+    max-width: none;
+  }
+  .lb__nav {
+    position: absolute;
+    top: 50%;
+    translate: 0 -50%;
+    display: none;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-xs);
+    background: rgb(255 255 255 / 0.08);
+    color: var(--white);
+    transition: background-color var(--dur-fast);
+  }
+  .lb__nav:hover {
+    background: rgb(255 255 255 / 0.16);
+  }
+  .lb__nav--prev {
+    inset-inline-start: var(--s-5);
+  }
+  .lb__nav--next {
+    inset-inline-end: var(--s-5);
+  }
+  .lb__thumbs {
+    display: flex;
+    justify-content: center;
+    gap: var(--s-2);
+    padding: var(--s-3) var(--gutter) calc(var(--s-4) + env(safe-area-inset-bottom));
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .lb__thumb {
+    flex: none;
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-xs);
+    overflow: hidden;
+    opacity: 0.4;
+    outline: 1px solid transparent;
+    outline-offset: 2px;
+    transition:
+      opacity var(--dur-fast),
+      outline-color var(--dur-fast);
+  }
+  .lb__thumb.is-active {
+    opacity: 1;
+    outline-color: var(--white);
+  }
+  .lb__thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  @media (min-width: 1024px) {
+    .lb__nav {
+      display: grid;
+    }
+    .lb__slide img {
+      inset-inline: var(--s-10);
+      width: calc(100% - 2 * var(--s-10));
+    }
+    .lb__thumb {
+      width: 64px;
+      height: 64px;
+    }
+  }
+</style>

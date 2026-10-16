@@ -17,8 +17,8 @@ const n2 = (i: number) => num(i, locale).padStart(2, locale === 'fa' ? '۰' : '0
 
 <BaseLayout locale={locale} title={t('collections.title')} page="collections">
   <section class="head container">
-    <h1 class="head__title" data-reveal>{t('collections.title')}</h1>
-    <p class="lede muted" data-reveal>{t('collections.lede')}</p>
+    <h1 class="t-display head__title" data-reveal>{t('collections.title')}</h1>
+    <p class="t-lead muted" data-reveal>{t('collections.lede')}</p>
   </section>
 
   {
@@ -30,7 +30,7 @@ const n2 = (i: number) => num(i, locale).padStart(2, locale === 'fa' ? '۰' : '0
             <span class="mono muted">{n2(i + 1)}</span>
             <div>
               <p class="label muted">{pick(c.season, locale)}</p>
-              <h2 class="coll__name">{pick(c.name, locale)}</h2>
+              <h2 class="t-h2 coll__name">{pick(c.name, locale)}</h2>
             </div>
             <p class="coll__story muted">{pick(c.story, locale)}</p>
           </div>
@@ -76,15 +76,6 @@ const n2 = (i: number) => num(i, locale).padStart(2, locale === 'fa' ? '۰' : '0
     padding-block: var(--s-7) var(--s-6);
     max-width: var(--max);
   }
-  .head__title {
-    font-size: var(--text-display);
-    line-height: 0.88;
-    letter-spacing: -0.055em;
-  }
-  :lang(fa) .head__title {
-    line-height: 1.2;
-    letter-spacing: 0;
-  }
   .head .lede {
     max-width: 36ch;
   }
@@ -102,9 +93,6 @@ const n2 = (i: number) => num(i, locale).padStart(2, locale === 'fa' ? '۰' : '0
   .coll__story {
     grid-column: 2;
     max-width: 44ch;
-  }
-  .coll__name {
-    font-size: var(--text-2xl);
   }
   .coll__grid {
     display: grid;

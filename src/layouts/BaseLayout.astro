@@ -15,6 +15,7 @@ import Header from '@/components/Header.astro';
 import Footer from '@/components/Footer.astro';
 import CartDrawer from '@/components/CartDrawer.astro';
 import TryOn from '@/components/TryOn.astro';
+import TabBar from '@/components/TabBar.astro';
 import { products } from '@/data/products';
 import { frameSVG, frameDataURL } from '@/lib/frames';
 import type { ClientCatalog } from '@/lib/catalog';
@@ -29,8 +30,12 @@ interface Props {
   /** Identifier for page-specific behaviour (body[data-page]) */
   page?: string;
   footer?: boolean;
+  /** Mobile bottom tab bar. Pages with their own bottom bar (product) pass false. */
+  tabbar?: boolean;
+  /** Page provides its own fixed bottom bar (reserves the same space). */
+  bottomBar?: boolean;
 }
-const { locale, title, description, overlayHeader = false, page = '', footer = true } = Astro.props;
+const { locale, title, description, overlayHeader = false, page = '', footer = true, tabbar = true, bottomBar = false } = Astro.props;
 const t = useT(locale);
 const fullTitle = title ? `${title} — Slazenger` : `Slazenger — ${t('brand.tagline')}`;
 const desc = description ?? t('home.statement', { n: locale === 'fa' ? '۴۰' : '40' });
@@ -92,12 +97,13 @@ const abs = (l: Locale) => (Astro.site ? new URL(href(route, l), Astro.site).hre
     <meta property="og:locale" content={locale === 'fa' ? 'fa_IR' : 'en_US'} />
     <meta name="robots" content="noindex" />
   </head>
-  <body data-page={page}>
+  <body data-page={page} class:list={{ 'has-bar': tabbar || bottomBar, 'has-tabbar': tabbar }}>
     <Header locale={locale} overlay={overlayHeader} />
     <main id="main">
       <slot />
     </main>
     {footer && <Footer locale={locale} />}
+    {tabbar && <TabBar locale={locale} />}
     <CartDrawer locale={locale} />
     <TryOn locale={locale} />
 

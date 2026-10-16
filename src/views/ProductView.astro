@@ -1,8 +1,9 @@
 ---
 /**
  * Product detail page.
- * Mobile: swipe gallery → info → sticky buy bar appears once the main CTA
- * scrolls away. Desktop: image mosaic (left) + sticky info column (right).
+ * Mobile: edge-to-edge swipe gallery (tap → full-screen lightbox) → info →
+ *         fixed bottom buy bar with live total (app-style reference).
+ * Desktop: 7-col image mosaic (click → lightbox) + 5-col sticky info column.
  */
 import { Image } from 'astro:assets';
 import BaseLayout from '@/layouts/BaseLayout.astro';
@@ -11,6 +12,8 @@ import Hotspots from '@/components/Hotspots.astro';
 import Dimensions from '@/components/Dimensions.astro';
 import Placeholder from '@/components/Placeholder.astro';
 import ProductCard from '@/components/ProductCard.astro';
+import SectionHead from '@/components/SectionHead.astro';
+import Lightbox from '@/components/Lightbox.astro';
 import { related, sizeString, type Product } from '@/data/products';
 import { getCollection } from '@/data/collections';
 import { formatPrice, href, localDigits, num, pick, useT, type Locale } from '@/i18n/utils';
@@ -26,30 +29,37 @@ const coll = getCollection(p.collection)!;
 const lifestyle = p.images.find((i) => i.kind === 'lifestyle');
 const detail = p.images.find((i) => i.kind === 'detail') ?? p.images[p.images.length - 1];
 const gallery = p.images;
+const lbId = `lb-${p.slug}`;
 ---
 
-<BaseLayout locale={locale} title={name} description={pick(p.description, locale)} page="product">
-  <div class="pdp" data-product-scope>
+<BaseLayout locale={locale} title={name} description={pick(p.description, locale)} page="product" tabbar={false} bottomBar>
+  <div class="pdp container" data-product-scope data-qty-scope data-price={p.price}>
     <!-- Gallery -->
     <section class="pdp__gallery" aria-label={name}>
       <div class="pdp__track" data-track>
         {
           gallery.map((img, i) => (
-            <figure class:list={['pdp__shot', `pdp__shot--${img.kind}`]} style={`--stage:${p.stage}`}>
+            <button class:list={['pdp__shot', `pdp__shot--${img.kind}`]} style={`--stage:${p.stage}`} type="button" data-lightbox-open={lbId} data-index={i} aria-label={`${t('gallery.open')} (${i + 1}/${gallery.length})`}>
               <Image
                 src={img.src}
                 alt={pick(img.alt, locale)}
                 widths={[480, 800, 1200, 1600]}
-                sizes="(min-width: 1024px) 60vw, 100vw"
+                sizes="(min-width: 1024px) 58vw, 100vw"
                 loading={i === 0 ? 'eager' : 'lazy'}
                 fetchpriority={i === 0 ? 'high' : 'auto'}
                 format="webp"
                 quality={84}
               />
-            </figure>
+              <span class="pdp__expand" aria-hidden="true">
+                <Icon name="expand" size={16} />
+              </span>
+            </button>
           ))
         }
       </div>
+      <a class="pdp__back" href={href('/shop', locale)} aria-label={t('common.back')}>
+        <Icon name="arrowLeft" size={20} flip />
+      </a>
       <div class="pdp__counter mono" aria-hidden="true">
         <span data-counter>{num(1, locale)}</span> / {num(gallery.length, locale)}
       </div>
@@ -61,25 +71,32 @@ const gallery = p.images;
     <!-- Info -->
     <section class="pdp__info">
       <div class="pdp__sticky">
-        <nav class="pdp__crumbs label muted" aria-label="Breadcrumb">
+        <nav class="pdp__crumbs label" aria-label="Breadcrumb">
           <a href={href('/shop', locale)}>{t('product.breadcrumb')}</a>
           <span aria-hidden="true">/</span>
           <a href={href('/collections', locale) + `#${coll.slug}`}>{pick(coll.name, locale)}</a>
         </nav>
 
         <div class="pdp__titles">
-          <h1 class="pdp__name">{name}</h1>
-          <p class="pdp__tagline">{pick(p.tagline, locale)}</p>
+          <h1 class="t-h1">{name}</h1>
+          <p class="t-lead muted">{pick(p.tagline, locale)}</p>
         </div>
 
         <div class="pdp__priceRow">
-          <p class="pdp__price">{formatPrice(p.price, locale)}</p>
-          <p class="mono muted">{p.code}</p>
+          <div>
+            <p class="pdp__price">{formatPrice(p.price, locale)}</p>
+            <p class="mono muted">{p.code}</p>
+          </div>
+          <div class="qty" role="group" aria-label={t('cart.qty')}>
+            <button type="button" data-qty-step="-1" aria-label="−"><Icon name="minus" size={16} /></button>
+            <span data-qty-value="1" aria-live="polite">{num(1, locale)}</span>
+            <button type="button" data-qty-step="1" aria-label="+"><Icon name="plus" size={16} /></button>
+          </div>
         </div>
 
         <fieldset class="pdp__colours">
           <legend class="label">
-            {t('common.colour')} — <span class="muted" data-colour-label>{pick(p.colourways[0].name, locale)}</span>
+            {t('common.colour')} <span class="muted">— <span data-colour-label>{pick(p.colourways[0].name, locale)}</span></span>
           </legend>
           <div class="pdp__swatches">
             {
@@ -99,27 +116,28 @@ const gallery = p.images;
           <span class="mono">{localDigits(sizeString(p), locale)}</span>
         </div>
 
-        <div class="pdp__ctas" data-main-cta>
-          <button class="btn btn--primary btn--block" type="button" data-add-to-cart data-slug={p.slug}>
-            <Icon name="bag" />
+        <div class="pdp__ctas">
+          <button class="btn btn--primary btn--block pdp__add" type="button" data-add-to-cart data-use-qty data-slug={p.slug}>
+            <Icon name="bag" size={18} />
             {t('common.addToBag')}
           </button>
           <button class="btn btn--ghost btn--block" type="button" data-tryon-open data-slug={p.slug}>
-            <Icon name="mirror" />
-            {t('common.tryOn')}
+            <Icon name="mirror" size={18} />
+            {t('product.tryOnCta')}
           </button>
         </div>
 
-        <ul class="pdp__assure" role="list">
-          <li><Icon name="check" size={16} /> {t('product.inStock')}</li>
-          <li><Icon name="sparkle" size={16} /> {t('product.handmade', { n: num(p.hours, locale) })} · {t('common.limited')} {t('common.pieces', { n: num(p.run, locale) })}</li>
+        <ul class="pdp__assure t-small" role="list">
+          <li><Icon name="truck" size={18} /> {t('product.inStock')}</li>
+          <li><Icon name="hand" size={18} /> {t('product.handmade', { n: num(p.hours, locale) })} · {t('common.limited')} {t('common.pieces', { n: num(p.run, locale) })}</li>
+          <li><Icon name="shield" size={18} /> {t('product.acc.care')}</li>
         </ul>
 
-        <p class="pdp__desc">{pick(p.description, locale)}</p>
+        <p class="t-body">{pick(p.description, locale)}</p>
 
         <div class="acc">
           <details open>
-            <summary>{t('product.acc.details')}<Icon name="plus" size={16} /></summary>
+            <summary>{t('product.acc.details')}<Icon name="plus" size={18} /></summary>
             <dl class="acc__dl">
               <div><dt class="muted">{t('product.material')}</dt><dd>{pick(p.material, locale)}</dd></div>
               <div><dt class="muted">{t('product.lens')}</dt><dd>{pick(p.lens, locale)}</dd></div>
@@ -128,15 +146,15 @@ const gallery = p.images;
             </dl>
           </details>
           <details>
-            <summary>{t('product.acc.fit')}<Icon name="plus" size={16} /></summary>
+            <summary>{t('product.acc.fit')}<Icon name="plus" size={18} /></summary>
             <p>{t('product.fitBody')}</p>
           </details>
           <details>
-            <summary>{t('product.acc.shipping')}<Icon name="plus" size={16} /></summary>
+            <summary>{t('product.acc.shipping')}<Icon name="plus" size={18} /></summary>
             <p>{t('product.shippingBody')}</p>
           </details>
           <details>
-            <summary>{t('product.acc.care')}<Icon name="plus" size={16} /></summary>
+            <summary>{t('product.acc.care')}<Icon name="plus" size={18} /></summary>
             <p>{t('product.careBody')}</p>
           </details>
         </div>
@@ -146,10 +164,7 @@ const gallery = p.images;
 
   <!-- Anatomy -->
   <section class="section container">
-    <div class="sec-head" data-reveal>
-      <p class="label muted">{t('product.craft.kicker')}</p>
-      <h2 class="sec-title">{t('product.craft.title')}</h2>
-    </div>
+    <SectionHead kicker={t('product.craft.kicker')} title={t('product.craft.title')} />
     <div data-reveal>
       <Hotspots image={p.anatomy.image} alt={pick(p.anatomy.alt, locale)} spots={p.anatomy.spots} locale={locale} id={`hs-${p.slug}`} />
     </div>
@@ -171,24 +186,21 @@ const gallery = p.images;
 
   <!-- Measurements -->
   <section class="section container">
-    <div class="sec-head" data-reveal>
-      <p class="label muted">{t('product.dims.kicker')}</p>
-      <h2 class="sec-title">{t('product.dims.title')}</h2>
-    </div>
+    <SectionHead kicker={t('product.dims.kicker')} title={t('product.dims.title')} />
     <div data-reveal>
       <Dimensions product={p} locale={locale} />
     </div>
   </section>
 
-  <!-- Try-on banner -->
+  <!-- Try-on band -->
   <section class="container">
     <div class="tryband" data-reveal>
       <div>
         <p class="label tryband__k">{t('mirror.title')}</p>
-        <p class="tryband__t">{t('product.tryOnCta')}</p>
+        <p class="t-h3">{t('product.tryOnCta')}</p>
       </div>
       <button class="btn btn--light" type="button" data-tryon-open data-slug={p.slug} data-autostart>
-        <Icon name="camera" />
+        <Icon name="camera" size={18} />
         {t('home.mirror.cta')}
       </button>
     </div>
@@ -196,38 +208,40 @@ const gallery = p.images;
 
   <!-- Related -->
   <section class="section container">
-    <div class="sec-head sec-head--row" data-reveal>
-      <h2 class="sec-title">{t('product.related')}</h2>
-      <a class="link label nowrap" href={href('/shop', locale)}>{t('common.viewAll')}</a>
-    </div>
+    <SectionHead title={t('product.related')} action={{ href: href('/shop', locale), label: t('common.viewAll') }} />
     <div class="related">
       {related(p.slug).map((r, i) => <ProductCard product={r} locale={locale} i={i} />)}
     </div>
   </section>
 
-  <!-- Mobile sticky buy bar -->
-  <div class="buybar" data-buybar aria-hidden="true" data-product-scope>
+  <!-- Mobile bottom buy bar (always visible < 1024px) -->
+  <div class="buybar" data-product-scope>
     <div class="buybar__info">
-      <p class="buybar__name">{name}</p>
-      <p class="buybar__price">{formatPrice(p.price, locale)}</p>
+      <p class="label muted">{t('common.total')}</p>
+      <p class="buybar__price" data-total>{formatPrice(p.price, locale)}</p>
     </div>
-    <button class="icon-btn buybar__try" type="button" data-tryon-open data-slug={p.slug} tabindex="-1" aria-label={t('common.tryOn')}>
-      <Icon name="mirror" />
+    <button class="buybar__try" type="button" data-tryon-open data-slug={p.slug} aria-label={t('common.tryOn')}>
+      <Icon name="mirror" size={20} />
     </button>
-    <button class="btn btn--light buybar__btn" type="button" data-add-to-cart data-slug={p.slug} data-buybar-add tabindex="-1">
+    <button class="btn btn--primary buybar__btn" type="button" data-add-to-cart data-use-qty data-slug={p.slug} data-buybar-add>
       {t('common.addToBag')}
+      <Icon name="bag" size={18} />
     </button>
   </div>
+
+  <Lightbox id={lbId} images={gallery.map((g) => ({ src: g.src, alt: pick(g.alt, locale) }))} locale={locale} />
 </BaseLayout>
 
 <script>
+  const lang = document.documentElement.lang === 'fa' ? 'fa-IR' : 'en-US';
+  const fmt = new Intl.NumberFormat(lang);
+
   // Gallery counter + dots (mobile swipe track)
   const track = document.querySelector<HTMLElement>('[data-track]');
   if (track) {
     const shots = [...track.children] as HTMLElement[];
     const counter = document.querySelector('[data-counter]');
     const dots = document.querySelectorAll<HTMLElement>('[data-dot]');
-    const fmt = new Intl.NumberFormat(document.documentElement.lang === 'fa' ? 'fa-IR' : 'en-US');
     const io = new IntersectionObserver(
       (entries) => {
         for (const e of entries) {
@@ -243,38 +257,38 @@ const gallery = p.images;
     shots.forEach((s) => io.observe(s));
   }
 
-  // Colour swatches → label, measurement render, and keep buy bar in sync
+  // Quantity stepper → live total in the buy bar
+  const pdp = document.querySelector<HTMLElement>('.pdp')!;
+  const price = Number(pdp.dataset.price);
+  const qtyEl = pdp.querySelector<HTMLElement>('[data-qty-value]')!;
+  const total = document.querySelector('[data-total]');
+  const suffix = lang === 'fa-IR' ? ' تومان' : ' Toman';
+  pdp.querySelectorAll<HTMLElement>('[data-qty-step]').forEach((b) =>
+    b.addEventListener('click', () => {
+      const q = Math.min(9, Math.max(1, Number(qtyEl.dataset.qtyValue) + Number(b.dataset.qtyStep)));
+      qtyEl.dataset.qtyValue = String(q);
+      qtyEl.textContent = fmt.format(q);
+      if (total) total.textContent = fmt.format(price * q) + suffix;
+    }),
+  );
+
+  // Colour swatches → label, measurement render, buy-bar colour
   const radios = document.querySelectorAll<HTMLInputElement>('input[name="colour"]');
   const label = document.querySelector('[data-colour-label]');
   radios.forEach((r) =>
     r.addEventListener('change', () => {
       if (label) label.textContent = r.dataset.name ?? '';
       document.querySelectorAll<HTMLElement>('[data-frame-for]').forEach((el) => (el.hidden = el.dataset.frameFor !== r.value));
-      document.querySelectorAll<HTMLElement>('[data-buybar-add], [data-buybar] [data-tryon-open]').forEach((b) => (b.dataset.colour = r.value));
+      document.querySelectorAll<HTMLElement>('.buybar [data-add-to-cart], .buybar [data-tryon-open]').forEach((b) => (b.dataset.colour = r.value));
     }),
   );
-
-  // Sticky buy bar: visible once the main CTA has scrolled out of view
-  const cta = document.querySelector('[data-main-cta]');
-  const bar = document.querySelector<HTMLElement>('[data-buybar]');
-  if (cta && bar) {
-    let shown = false;
-    const update = () => {
-      const show = cta.getBoundingClientRect().bottom < 0;
-      if (show === shown) return;
-      shown = show;
-      bar.classList.toggle('is-on', show);
-      bar.setAttribute('aria-hidden', String(!show));
-      bar.querySelectorAll('button').forEach((b) => (b.tabIndex = show ? 0 : -1));
-    };
-    window.addEventListener('scroll', update, { passive: true });
-    update();
-  }
 </script>
 
 <style>
+  /* ── Layout ── */
   .pdp {
     display: grid;
+    padding-inline: 0;
   }
 
   /* ── Gallery ── */
@@ -294,24 +308,51 @@ const gallery = p.images;
     display: none;
   }
   .pdp__shot {
+    position: relative;
     scroll-snap-align: start;
     aspect-ratio: 4 / 5;
     background: var(--stage);
     overflow: hidden;
+    cursor: zoom-in;
   }
   .pdp__shot img {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    transition: transform 1.2s var(--ease-out);
   }
+  .pdp__expand {
+    position: absolute;
+    bottom: var(--s-3);
+    inset-inline-end: var(--s-3);
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-xs);
+    background: rgb(255 255 255 / 0.85);
+    backdrop-filter: blur(6px);
+    opacity: 0;
+    transition: opacity var(--dur-fast);
+  }
+  .pdp__back,
   .pdp__counter {
     position: absolute;
-    top: var(--s-4);
-    inset-inline-end: var(--s-4);
-    padding: 4px 10px;
-    border-radius: var(--radius-pill);
-    background: rgb(255 255 255 / 0.8);
+    top: var(--s-3);
+    background: rgb(255 255 255 / 0.85);
     backdrop-filter: blur(6px);
+    border-radius: var(--radius-xs);
+  }
+  .pdp__back {
+    inset-inline-start: var(--s-3);
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+  }
+  .pdp__counter {
+    inset-inline-end: var(--s-3);
+    padding: 6px 10px;
   }
   .pdp__dots {
     position: absolute;
@@ -320,11 +361,11 @@ const gallery = p.images;
     display: flex;
     justify-content: center;
     gap: 6px;
+    pointer-events: none;
   }
   .pdp__dots span {
     width: 6px;
-    height: 6px;
-    border-radius: 50%;
+    height: 2px;
     background: rgb(20 19 18 / 0.25);
     transition:
       width var(--dur) var(--ease-out),
@@ -332,43 +373,34 @@ const gallery = p.images;
   }
   .pdp__dots span.is-active {
     width: 20px;
-    border-radius: 3px;
     background: var(--ink);
   }
 
   /* ── Info ── */
   .pdp__info {
-    padding: var(--s-5) var(--gutter) 0;
+    padding: var(--s-6) var(--gutter) 0;
   }
   .pdp__sticky {
     display: grid;
-    gap: var(--s-5);
+    gap: var(--s-6);
   }
   .pdp__crumbs {
     display: flex;
     gap: var(--s-2);
+    color: var(--stone-600);
   }
   .pdp__crumbs a:hover {
     color: var(--ink);
   }
-  .pdp__name {
-    font-size: var(--text-3xl);
-    line-height: 0.92;
-    letter-spacing: -0.05em;
-  }
-  :lang(fa) .pdp__name {
-    line-height: 1.25;
-    letter-spacing: 0;
-  }
-  .pdp__tagline {
-    font-size: var(--text-lg);
-    color: var(--stone-600);
-    margin-block-start: var(--s-2);
+  .pdp__titles {
+    display: grid;
+    gap: var(--s-3);
+    margin-block-start: calc(-1 * var(--s-3));
   }
   .pdp__priceRow {
     display: flex;
     justify-content: space-between;
-    align-items: baseline;
+    align-items: center;
     padding-block: var(--s-4);
     border-block: 1px solid var(--line);
   }
@@ -376,6 +408,30 @@ const gallery = p.images;
     font-size: var(--text-lg);
     font-weight: 500;
     letter-spacing: var(--tracking-snug);
+    line-height: 1.3;
+  }
+  .qty {
+    display: inline-flex;
+    align-items: center;
+    height: 40px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-xs);
+  }
+  .qty button {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 100%;
+    transition: background-color var(--dur-fast);
+  }
+  .qty button:hover {
+    background: var(--stone-100);
+  }
+  .qty span {
+    min-width: 2.5ch;
+    text-align: center;
+    font-size: var(--text-sm);
+    font-weight: 500;
   }
   .pdp__colours {
     border: 0;
@@ -397,11 +453,11 @@ const gallery = p.images;
   }
   .swatch__dot {
     display: block;
-    width: 34px;
-    height: 34px;
-    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-pill);
     box-shadow: inset 0 0 0 1px var(--line);
-    outline: 1.5px solid transparent;
+    outline: 1px solid transparent;
     outline-offset: 3px;
     transition: outline-color var(--dur-fast);
   }
@@ -409,12 +465,13 @@ const gallery = p.images;
     outline-color: var(--ink);
   }
   .swatch input:focus-visible + .swatch__dot {
-    outline-color: var(--nude-500);
+    outline: 2px solid var(--nude-500);
   }
   .pdp__size {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    margin-block-start: calc(-1 * var(--s-2));
   }
   .pdp__ctas {
     display: grid;
@@ -422,18 +479,13 @@ const gallery = p.images;
   }
   .pdp__assure {
     display: grid;
-    gap: var(--s-2);
-    font-size: var(--text-sm);
+    gap: var(--s-3);
     color: var(--stone-600);
   }
   .pdp__assure li {
     display: flex;
-    gap: var(--s-2);
+    gap: var(--s-3);
     align-items: center;
-  }
-  .pdp__desc {
-    font-size: var(--text-md);
-    line-height: 1.6;
   }
 
   .acc {
@@ -447,23 +499,25 @@ const gallery = p.images;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-block: var(--s-4);
+    min-height: 56px;
     cursor: pointer;
+    font-size: var(--text-sm);
     font-weight: 500;
   }
   .acc summary::-webkit-details-marker {
     display: none;
   }
-  .acc summary :global(svg) {
+  .acc summary :global(.icon) {
     transition: transform var(--dur) var(--ease-out);
   }
-  .acc details[open] summary :global(svg) {
+  .acc details[open] summary :global(.icon) {
     transform: rotate(45deg);
   }
   .acc details > :not(summary) {
     padding-block-end: var(--s-5);
     font-size: var(--text-sm);
     color: var(--stone-600);
+    max-width: var(--measure);
   }
   .acc__dl {
     display: grid;
@@ -478,13 +532,17 @@ const gallery = p.images;
     color: var(--ink);
   }
 
+  @media (max-width: 1023px) {
+    /* the bottom buy bar carries "Add to bag" on mobile */
+    .pdp__add {
+      display: none;
+    }
+  }
   @media (min-width: 1024px) {
     .pdp {
       grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
-      max-width: var(--max);
-      margin-inline: auto;
+      column-gap: var(--s-9);
       padding-inline: var(--gutter);
-      gap: var(--s-8);
       padding-block-start: var(--s-5);
     }
     .pdp__track {
@@ -502,6 +560,13 @@ const gallery = p.images;
       grid-column: 1 / -1;
       aspect-ratio: 5 / 4;
     }
+    .pdp__shot:hover img {
+      transform: scale(1.02);
+    }
+    .pdp__shot:hover .pdp__expand {
+      opacity: 1;
+    }
+    .pdp__back,
     .pdp__counter,
     .pdp__dots {
       display: none;
@@ -511,26 +576,9 @@ const gallery = p.images;
     }
     .pdp__sticky {
       position: sticky;
-      top: calc(var(--header-h) + var(--s-5));
+      top: calc(var(--header-h) + var(--s-6));
       padding-block-end: var(--s-7);
     }
-  }
-
-  /* ── Shared section heads (same as home) ── */
-  .sec-head {
-    display: grid;
-    gap: var(--s-3);
-    margin-block-end: var(--s-7);
-    max-width: 40rem;
-  }
-  .sec-head--row {
-    max-width: none;
-    display: flex;
-    justify-content: space-between;
-    align-items: end;
-  }
-  .sec-title {
-    font-size: var(--text-2xl);
   }
 
   /* ── Lifestyle ── */
@@ -552,11 +600,11 @@ const gallery = p.images;
     position: absolute;
     inset-inline-end: var(--gutter);
     bottom: var(--gutter);
-    width: clamp(120px, 28vw, 340px);
+    width: clamp(120px, 26vw, 320px);
     aspect-ratio: 3 / 4;
-    border-radius: var(--radius);
+    border-radius: var(--radius-sm);
     overflow: hidden;
-    border: 6px solid var(--paper);
+    border: 4px solid var(--paper);
     box-shadow: var(--shadow-float);
   }
   .life__inset img {
@@ -581,16 +629,11 @@ const gallery = p.images;
     color: var(--nude-300);
     margin-block-end: var(--s-2);
   }
-  .tryband__t {
-    font-size: var(--text-xl);
-    letter-spacing: var(--tracking-tight);
-    line-height: 1.15;
-  }
 
   .related {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--s-6) var(--s-3);
+    gap: var(--s-6) var(--grid-gap);
   }
   .related > :global(:nth-child(3)) {
     display: none;
@@ -598,59 +641,54 @@ const gallery = p.images;
   @media (min-width: 1024px) {
     .related {
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: var(--s-6) var(--s-4);
     }
     .related > :global(:nth-child(3)) {
       display: block;
     }
   }
 
-  /* ── Mobile buy bar ── */
+  /* ── Mobile buy bar (reference: total + primary action) ── */
   .buybar {
     position: fixed;
     z-index: 40;
     inset-inline: var(--s-3);
     bottom: calc(var(--s-3) + env(safe-area-inset-bottom));
+    height: var(--tabbar-h);
     display: flex;
     align-items: center;
     gap: var(--s-2);
-    padding: var(--s-2) var(--s-2) var(--s-2) var(--s-5);
-    padding-inline: var(--s-5) var(--s-2);
-    border-radius: var(--radius-pill);
-    background: var(--ink);
-    color: var(--paper);
+    padding-inline: var(--s-4) var(--s-2);
+    border-radius: var(--radius-lg);
+    background: color-mix(in oklab, var(--white) 92%, transparent);
+    backdrop-filter: blur(16px) saturate(1.3);
+    -webkit-backdrop-filter: blur(16px) saturate(1.3);
+    border: 1px solid var(--line);
     box-shadow: var(--shadow-float);
-    transform: translateY(140%);
-    visibility: hidden;
-    transition:
-      transform var(--dur) var(--ease-out),
-      visibility 0s linear var(--dur);
-  }
-  .buybar.is-on {
-    transform: none;
-    visibility: visible;
-    transition: transform var(--dur) var(--ease-out);
   }
   .buybar__info {
     flex: 1;
     min-width: 0;
-    line-height: 1.25;
+    line-height: 1.2;
   }
-  .buybar__name {
-    font-weight: 500;
+  .buybar__info .label {
+    font-size: 10px;
   }
   .buybar__price {
-    font-size: var(--text-xs);
-    color: var(--stone-400);
+    font-size: var(--text-base);
+    font-weight: 600;
+    letter-spacing: var(--tracking-snug);
+    white-space: nowrap;
   }
   .buybar__try {
-    color: var(--paper);
-  }
-  .buybar__try:hover {
-    background: rgb(255 255 255 / 0.1);
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-xs);
+    border: 1px solid var(--line-strong);
   }
   .buybar__btn {
-    --btn-h: 46px;
+    --btn-h: 48px;
     padding-inline: var(--s-5);
   }
   @media (min-width: 1024px) {

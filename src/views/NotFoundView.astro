@@ -16,7 +16,7 @@ const p = products[2];
   <section class="nf container">
     <div class="nf__art" set:html={frameSVG(p.geometry, p.colourways[0].style, 'nf')} />
     <p class="mono muted">404</p>
-    <h1 class="nf__title">{t('404.title')}</h1>
+    <h1 class="t-h2 nf__title">{t('404.title')}</h1>
     <a class="btn btn--primary" href={href('/', locale)}>{t('404.cta')}</a>
   </section>
 </BaseLayout>
@@ -39,7 +39,6 @@ const p = products[2];
     height: auto;
   }
   .nf__title {
-    font-size: var(--text-2xl);
     max-width: 16ch;
   }
 </style>

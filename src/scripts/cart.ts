@@ -39,15 +39,15 @@ function setCart(lines: CartLine[]) {
   window.dispatchEvent(new CustomEvent('cart:change', { detail: lines }));
 }
 
-export function addToCart(slug: string, colour?: string) {
+export function addToCart(slug: string, colour?: string, qty = 1) {
   const cat = readCatalog();
   const p = cat.products[slug];
   if (!p) return;
   const c = colour || p.colourways[0]?.id || 'default';
   const lines = getCart();
   const hit = lines.find((l) => l.slug === slug && l.colour === c);
-  if (hit) hit.qty += 1;
-  else lines.push({ slug, colour: c, qty: 1 });
+  if (hit) hit.qty += qty;
+  else lines.push({ slug, colour: c, qty });
   setCart(lines);
 }
 
@@ -133,7 +133,10 @@ export function initCart() {
       // Colour comes from the button, or from the nearest selected swatch.
       const scope = add.closest('[data-product-scope]') ?? document;
       const selected = scope.querySelector<HTMLInputElement>('input[name="colour"]:checked');
-      addToCart(add.dataset.slug!, add.dataset.colour || selected?.value);
+      // Quantity from a stepper in the same product scope (product page), default 1.
+      const qtyEl = (add.closest('[data-qty-scope]') ?? document.querySelector('[data-qty-scope]'))?.querySelector<HTMLElement>('[data-qty-value]');
+      const qty = add.hasAttribute('data-use-qty') ? Math.max(1, Number(qtyEl?.dataset.qtyValue ?? 1)) : 1;
+      addToCart(add.dataset.slug!, add.dataset.colour || selected?.value, qty);
       toast(readCatalog().strings.added);
       if (!add.hasAttribute('data-no-drawer')) openCart();
       return;

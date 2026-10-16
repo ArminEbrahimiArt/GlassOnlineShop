@@ -19,6 +19,7 @@ Status key: ✅ done · 🟡 in progress · ⬜ not started
 | Bag drawer with localStorage persistence | ✅ |
 | GitHub Pages CI deploy | ✅ |
 | Project documentation (this folder) | ✅ |
+| **1.1 refinement** (client review): Lucide icons, full-bleed hero + glass caption panel, near-square radii, type/spacing system, phone-style lightbox, mobile tab bar + buy bar + quick add, face-tracking v1.1 | ✅ |
 | Collect feedback from the brand meeting → `docs/CHANGELOG.md` + backlog below | ⬜ |
 
 ## Phase 2 — Design refinement & real content ⬜
