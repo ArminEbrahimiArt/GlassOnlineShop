@@ -69,13 +69,10 @@ h1,
 h2,
 h3,
 h4 {
-  font-weight: 500;
+  font-weight: var(--weight-heading);
   line-height: var(--leading-heading);
   letter-spacing: var(--tracking-tight);
   text-wrap: balance;
-}
-:lang(fa) :is(h1, h2, h3, h4) {
-  font-weight: 600;
 }
 p {
   text-wrap: pretty;
@@ -143,25 +140,25 @@ p {
    weight, leading and tracking, in both locales.                         */
 .t-display {
   font-size: var(--text-display);
-  font-weight: 500;
+  font-weight: var(--weight-heading);
   line-height: var(--leading-display);
   letter-spacing: var(--tracking-display);
 }
 .t-h1 {
   font-size: var(--text-3xl);
-  font-weight: 500;
-  line-height: 1;
+  font-weight: var(--weight-heading);
+  line-height: var(--leading-display);
   letter-spacing: var(--tracking-display);
 }
 .t-h2 {
   font-size: var(--text-2xl);
-  font-weight: 500;
+  font-weight: var(--weight-heading);
   line-height: var(--leading-heading);
   letter-spacing: var(--tracking-tight);
 }
 .t-h3 {
   font-size: var(--text-xl);
-  font-weight: 500;
+  font-weight: var(--weight-heading);
   line-height: 1.2;
   letter-spacing: var(--tracking-tight);
 }
@@ -178,22 +175,14 @@ p {
 }
 .t-small {
   font-size: var(--text-sm);
-  line-height: 1.5;
+  line-height: 1.55;
 }
 .t-caption {
   font-size: var(--text-xs);
   line-height: 1.5;
 }
-:lang(fa) :is(.t-display, .t-h1) {
-  line-height: var(--leading-display);
-  font-weight: 700;
-}
-:lang(fa) :is(.t-h2, .t-h3) {
-  line-height: var(--leading-heading);
-  font-weight: 600;
-}
-:lang(fa) .t-lead {
-  line-height: 1.7;
+:lang(fa) :is(.t-h3, .t-small, .t-caption) {
+  line-height: var(--leading-snug);
 }
 
 .label {
@@ -204,8 +193,8 @@ p {
   line-height: 1.4;
 }
 :lang(fa) .label {
-  font-size: var(--text-xs);
   text-transform: none;
+  font-weight: 600;
 }
 .mono {
   font-family: var(--font-mono);
@@ -229,9 +218,10 @@ p {
   min-height: var(--btn-h);
   padding-inline: var(--s-6);
   border-radius: var(--radius-xs);
-  font-size: var(--text-sm);
+  font-size: var(--text-2xs);
   font-weight: 500;
-  letter-spacing: 0.01em;
+  letter-spacing: var(--tracking-button);
+  text-transform: uppercase;
   white-space: nowrap;
   transition:
     background-color var(--dur-fast) var(--ease-out),
@@ -270,24 +260,47 @@ p {
 .btn--sm {
   --btn-h: 40px;
   padding-inline: var(--s-4);
-  font-size: var(--text-xs);
+}
+:lang(fa) .btn {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-transform: none;
 }
 .btn .icon {
   flex: none;
 }
 
 /* Icon-only round button */
+/* Icon-only button. Always a centred 40px square hit area (44px on touch);
+   hover is a subtle square tint, never a floating circle. Layout overrides
+   must only change visibility via `display: none` / `display: inline-grid`. */
 .icon-btn {
   display: inline-grid;
   place-items: center;
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-pill);
-  transition: background-color var(--dur-fast) var(--ease-out);
+  flex: none;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: var(--radius-xs);
+  color: inherit;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
   -webkit-tap-highlight-color: transparent;
 }
-.icon-btn:hover {
-  background: color-mix(in oklab, var(--ink) 6%, transparent);
+.icon-btn > .icon {
+  display: block;
+}
+@media (hover: hover) {
+  .icon-btn:hover {
+    background: color-mix(in oklab, var(--ink) 7%, transparent);
+  }
+}
+@media (pointer: coarse) {
+  .icon-btn {
+    width: 44px;
+    height: 44px;
+  }
 }
 
 /* Underline link that draws in on hover */

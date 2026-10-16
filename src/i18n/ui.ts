@@ -61,6 +61,8 @@ const en = {
   'home.hero.title2': 'Seen by everyone.',
   'home.hero.cta': 'Shop the collection',
   'home.hero.cta2': 'Try on virtually',
+  'home.hero.discover': 'Discover {name}',
+  'home.lookbook.title': 'Lookbook',
   'home.statement':
     'Every Slazenger frame begins as a single block of acetate and leaves the atelier only after {n} hours of cutting, shaping and hand-polishing. No shortcuts. No two exactly alike.',
   'home.statement.kicker': 'The house',
@@ -201,6 +203,7 @@ const en = {
   'footer.house': 'The house',
   'footer.help': 'Help',
   'footer.stores': 'Find a store',
+  'footer.social': 'Social',
   'footer.contact': 'Contact',
   'footer.shipping': 'Shipping & returns',
   'footer.warranty': 'Warranty',
@@ -270,6 +273,8 @@ const fa: Record<UIKey, string> = {
   'home.hero.title2': 'برای دیده شدن.',
   'home.hero.cta': 'مشاهده کالکشن',
   'home.hero.cta2': 'امتحان مجازی',
+  'home.hero.discover': 'مشاهده‌ی {name}',
+  'home.lookbook.title': 'لوک‌بوک',
   'home.statement':
     'هر فریم اسلازنجر از یک قطعه‌ی یکپارچه استات آغاز می‌شود و تنها پس از {n} ساعت برش، فرم‌دهی و پرداخت دستی از آتلیه بیرون می‌آید. بدون میان‌بر. هیچ دو فریمی دقیقاً یکسان نیست.',
   'home.statement.kicker': 'خانه',
@@ -402,6 +407,7 @@ const fa: Record<UIKey, string> = {
   'footer.house': 'برند',
   'footer.help': 'راهنما',
   'footer.stores': 'فروشگاه‌ها',
+  'footer.social': 'شبکه‌های اجتماعی',
   'footer.contact': 'تماس با ما',
   'footer.shipping': 'ارسال و مرجوعی',
   'footer.warranty': 'گارانتی',

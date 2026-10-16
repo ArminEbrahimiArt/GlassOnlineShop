@@ -2,6 +2,48 @@
 
 All notable changes, newest first. Format: date · phase · summary · files.
 
+## 2026-10-16 · Phase 1.2 · Persian type, image standard, image-led home
+
+**Summary:** Second client review. Abar High replaces Vazirmatn for Persian, the type scale is recalibrated to
+luxury-fashion conventions, there is a formal Image Standard with a generator, the hero becomes images plus two
+buttons, the home page becomes image-led, and product cards become contained units. The icon hover bug is fixed.
+
+**Fixed**
+- **Icon hover:** the header's mirror icon was `display: flex` on desktop, so the icon sat off-centre in its hover
+  area. Icon buttons are now always a centred 40 px square (44 px on touch) with a square hover tint, shown only on
+  hover-capable devices. Files: `src/styles/global.css`, `src/components/Header.astro`.
+
+**Changed**
+- **Persian typeface:** Abar High (FontIran, commercial) replaces Vazirmatn. Only the woff2 files for 400/600/700 are
+  self-hosted, limited by `unicode-range` to Persian/Arabic code points. Persian leading is set explicitly, because
+  the font's own metrics are 1.8em tall, and Persian small sizes are bumped by 1 px. Files: `src/styles/fonts.css`
+  (new), `src/assets/fonts/abar/` (new), `tokens.css`, `BaseLayout.astro`, `package.json` (Vazirmatn removed). ADR-014.
+- **Type scale** recalibrated to luxury-fashion conventions:
+  - sizes: body 15 px, UI 13 px; restrained headlines (h1 32→52, h2 26→36)
+  - English labels and buttons are 11 px uppercase with +0.1/0.14em tracking
+  - heading weight comes from a token (`--weight-heading`: 500 in English, 600 in Persian)
+
+  Files: `tokens.css`, `global.css`.
+- **Image Standard v1:**
+  - slot spec and focal-point generator; every product image re-rendered to exact sizes
+  - product shots are 4:3, lifestyle shots 4:5, hero shots 16:9 and 9:16
+  - a quality report flags images upscaled from small sources
+  - images are looked up by slot through `src/lib/media.ts` (new)
+
+  Files: `scripts/image-spec.mjs` (new), `scripts/prepare-images.mjs`, `src/assets/products/*` (regenerated),
+  `src/data/products.ts` (`images` = 4:3 shots, new `lifestyle` and `hero`, hotspots re-placed),
+  `docs/IMAGE-STANDARD.md` (new), `docs/IMAGE-REPORT.md` (generated). ADR-015.
+- **Home hero:** the glass caption panel is removed. Each slide is now only the image plus two buttons:
+  "Discover <name>" and "Try on". Slide dots sit at the bottom. There are 3 slides (Milano, Notte, Cristallo), each
+  with art-directed 16:9 and 9:16 images.
+- **Home structure (image-led, ADR-016):** hero → new-season headline + 4-up product grid → lookbook (on-model
+  portraits) → up close → Virtual Mirror → collections → atelier band. The text-only statement section and the
+  per-product "scenes" are removed. File: `src/views/HomeView.astro`.
+- **Product card:** now a contained unit, with one surface and hairline frame for image and info. It shows an
+  uppercase name and price on one row, the colour name with dots (the current one ringed), an ink "New" badge and
+  4:3 imagery. File: `src/components/ProductCard.astro`.
+- **PDP and Collections** use 4:3 product shots. The PDP lifestyle band uses the `lifestyle` slot.
+
 ## 2026-10-16 · Phase 1.1 · Design refinement after first review
 
 **Summary:** Changes from the client's review: a Lucide (shadcn) icon family, a full-bleed hero, near-square

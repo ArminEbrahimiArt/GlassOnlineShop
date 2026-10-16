@@ -1,6 +1,6 @@
 # Architecture
 
-_Last updated: 2026-10-16 · Phase 1.1_
+_Last updated: 2026-10-16 · Phase 1.2_
 
 ## 1. Overview
 
@@ -36,13 +36,15 @@ backend/CMS without changing the views (see §7).
 │   ├── CHANGELOG.md               dated change log
 │   └── PRESENTATION.md            meeting demo script (fa)
 ├── scripts/
-│   ├── prepare-images.mjs         raw brand photos → cropped, normalised JPGs in src/assets/products
+│   ├── image-spec.mjs             IMAGE STANDARD: slots (ratio, exact size, min source) + per-product focal-point map
+│   ├── prepare-images.mjs         renders every slot from RAW_DIR → src/assets/products/<slug>/<slot>.jpg + docs/IMAGE-REPORT.md
 │   └── fetch-mediapipe.mjs        copies MediaPipe WASM + downloads face model into public/mediapipe (git-ignored)
 ├── public/
 │   ├── favicon.svg
 │   └── mediapipe/                 (generated) wasm/ + face_landmarker.task
 └── src/
-    ├── assets/products/<slug>/    product photography (sources for astro:assets)
+    ├── assets/products/<slug>/    generated slot masters: card, gallery-N, detail, lifestyle-N, hero-desktop, hero-mobile
+    ├── assets/fonts/abar/         Abar High woff2 (Persian, commercial — see LICENSE.md)
     ├── data/                      ← CONTENT (sample in Phase 1)
     │   ├── products.ts            Product type + catalogue (4 models), related(), sizeString()
     │   ├── collections.ts         Collection type + 4 collections
@@ -53,6 +55,7 @@ backend/CMS without changing the views (see §7).
     ├── lib/
     │   ├── frames.ts              parametric front-view SVG frame renderer (try-on, measurements, colourways)
     │   ├── face-pose.ts           landmarks → pose (bridge, 3D width, roll/yaw/pitch) + One Euro PoseFilter
+    │   ├── media.ts               media(slug, slot) / series(slug, family): slot-based image lookup (import.meta.glob)
     │   └── catalog.ts             ClientCatalog type, readCatalog(), formatPriceClient()
     ├── layouts/
     │   └── BaseLayout.astro       <html lang/dir>, fonts, meta/hreflang, Header/Footer/TabBar/Cart/TryOn, #catalog JSON
@@ -77,9 +80,10 @@ backend/CMS without changing the views (see §7).
     │   └── tryon.ts               Virtual Mirror engine (camera, MediaPipe, overlay, capture, upload)
     ├── styles/
     │   ├── tokens.css             design tokens (see DESIGN-SYSTEM.md)
+    │   ├── fonts.css              @font-face for Abar High (unicode-range: Persian only)
     │   └── global.css             reset, type primitives, buttons, layout, reveal
     ├── views/                     page bodies, each takes `locale`
-    │   ├── HomeView.astro         full-bleed hero slideshow + glass caption panel, statement, product scenes, anatomy, mirror CTA, collections, atelier
+    │   ├── HomeView.astro         hero (images + 2 buttons) → new-season grid → lookbook → up close → mirror → collections → atelier
     │   ├── ShopView.astro         listing + filter chips + sort
     │   ├── ProductView.astro      gallery (→ Lightbox), info, qty, colourways, accordion, anatomy, lifestyle, measurements, related, mobile buy bar
     │   ├── CollectionsView.astro  collections with their products / coming-soon
@@ -120,7 +124,7 @@ each locale can diverge later (for example, a Persian-only landing page). See AD
 - **Content** (products and so on) uses `L10n = { en, fa }`, and views read it with `pick(field, locale)`.
 - **Numbers and prices.** `formatPrice()` gives `8,900,000 Toman` and `۸٬۹۰۰٬۰۰۰ تومان`. `localDigits()` converts digits inside codes such as sizes.
 - **RTL layout.** CSS uses logical properties throughout. Directional icons get `flip`. Photos are never mirrored.
-- **Typography.** The font stack is `Geist → Vazirmatn`, so Latin glyphs render in Geist and Persian falls through to Vazirmatn. Under `:lang(fa)`, letter-spacing is zeroed because tracking breaks Persian joining, and line-height is increased.
+- **Typography.** The font stack is `Geist → Abar High`, so Latin glyphs render in Geist and Persian falls through to Abar High (`src/styles/fonts.css`). Under `:lang(fa)`, the tokens zero letter-spacing (tracking breaks Persian joining), set explicit leading (Abar's metrics are 1.8em tall), bump small sizes by 1 px and raise heading weight to 600.
 - The **wordmark** is always Latin, as is common for luxury houses.
 - The language switch maps the current route to the same route in the other locale, using `neutralPath()`.
 
@@ -181,6 +185,6 @@ The views depend on the **types** `Product`, `Collection` and `ClientCatalog`, n
 ## 8. Performance notes
 
 - Images: responsive `srcset` WebP (q≈80) from roughly 1500 px sources. The hero is eager with `fetchpriority=high`, and everything else is lazy.
-- Fonts: variable WOFF2 self-hosted. Vazirmatn is `unicode-range`-limited, so English pages do not download it.
+- Fonts: WOFF2 self-hosted. Abar High is `unicode-range`-limited to Persian, so English pages do not download it.
 - JS: about 10 KB of page scripts. MediaPipe is a separate lazy chunk.
 - Motion: CSS transitions, IntersectionObserver reveals, cross-document View Transitions, and `prefers-reduced-motion` support.

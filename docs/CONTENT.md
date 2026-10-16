@@ -26,16 +26,20 @@ for the prototype, but **the final photography must show Slazenger branding**. R
 
 ## Photo mapping
 
-| Folder (brand delivery) | Slug | Files |
-|---|---|---|
-| `1/` | `milano` | campaign (packshot with brand type), angle, portrait-woman, portrait-man |
-| `2/` | `notte` | still-life, plus angle, front and hinge cropped from the triptych |
-| `3/` | `cristallo` | float, plus angle, front and hinge cropped from the triptych, and editorial (unused) |
-| `4/` | `rosa` | angle and standing, split from the diptych |
+All product images are generated to the **Image Standard** (`docs/IMAGE-STANDARD.md`) by `npm run images` from the
+brand's raw folders. The full source → slot map with focal points is in `scripts/image-spec.mjs`, and per-file
+results are in `docs/IMAGE-REPORT.md`.
 
-Regenerate with `RAW_DIR=/path/to/Glass npm run images`. The crop boxes live in `scripts/prepare-images.mjs`.
+| Folder (brand delivery) | Slug | Slots produced |
+|---|---|---|
+| `1/` | `milano` | card, gallery-2/3, detail, lifestyle-1/2 (on-model), hero-desktop, hero-mobile |
+| `2/` | `notte` | card (front), gallery-2/3/4, detail (hinge), hero-desktop, hero-mobile |
+| `3/` | `cristallo` | card (front), gallery-2/3/4, detail (hinge), hero-desktop, hero-mobile |
+| `4/` | `rosa` | card (the standing shot rotated to a front view), gallery-2/3, detail (jewel) |
 
 ## Shot list for the brand (Phase 2)
+
+The full photographer brief is in `docs/IMAGE-STANDARD.md`. Summary:
 
 Per model × colourway:
 1. **Front packshot** on a seamless warm-grey background (#E5E1DB), 3000 px, centred. Used for cards and the hero.

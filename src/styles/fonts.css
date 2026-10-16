@@ -1,0 +1,29 @@
+/*
+ * Persian typeface: Abar High (commercial, FontIran — see src/assets/fonts/abar/LICENSE.md).
+ * unicode-range limits it to Persian/Arabic code points, so English pages never download it,
+ * and Latin characters on Persian pages keep using Geist.
+ */
+@font-face {
+  font-family: 'Abar High';
+  src: url('../assets/fonts/abar/AbarHigh-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+200C-200F, U+2066-2069, U+FB50-FDFF, U+FE70-FEFF;
+}
+@font-face {
+  font-family: 'Abar High';
+  src: url('../assets/fonts/abar/AbarHigh-SemiBold.woff2') format('woff2');
+  font-weight: 500 600;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+200C-200F, U+2066-2069, U+FB50-FDFF, U+FE70-FEFF;
+}
+@font-face {
+  font-family: 'Abar High';
+  src: url('../assets/fonts/abar/AbarHigh-Bold.woff2') format('woff2');
+  font-weight: 700 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+200C-200F, U+2066-2069, U+FB50-FDFF, U+FE70-FEFF;
+}

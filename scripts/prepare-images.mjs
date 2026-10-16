@@ -1,68 +1,86 @@
 /**
- * Prepares product photography for the site.
+ * Renders every product image slot defined in scripts/image-spec.mjs.
  *
- * Reads the raw photo folders delivered by the brand (one folder per product,
- * see docs/CONTENT.md) and writes normalised, cropped JPG sources into
- * src/assets/products/<slug>/. Astro's image pipeline then generates the
- * responsive AVIF/WebP variants at build time, so these sources stay
- * high-quality and are committed to the repo. The raw folder is NOT committed.
+ *   RAW_DIR=/path/to/brand/photos npm run images
  *
- * Usage:  RAW_DIR=/path/to/Glass npm run images
+ * For each output: take the source region (crop composites, rotate if needed),
+ * cut the largest rect of the slot's ratio around the focal point (÷ zoom),
+ * resize to the slot's exact size (Lanczos3, light sharpening when enlarging),
+ * and save a high-quality JPG to src/assets/products/<slug>/<name>.jpg.
+ * Astro then builds responsive AVIF/WebP variants from these masters.
  *
- * Crops are in source pixels: [left, top, width, height]. Composite
- * "triptych" shots are split into their individual panels here.
+ * Also writes docs/IMAGE-REPORT.md: every file, its crop, and whether the
+ * source met the standard (sources below `minSource` are flagged for reshoot).
  */
 import sharp from 'sharp';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { SLOTS, PRODUCTS } from './image-spec.mjs';
 
 const RAW = process.env.RAW_DIR;
 if (!RAW) {
-  console.error('Set RAW_DIR to the folder that contains the numbered product folders (1, 2, 3, 4).');
+  console.error('Set RAW_DIR to the folder with the brand photo folders (1, 2, 3, 4…).');
   process.exit(1);
 }
 const OUT = path.resolve('src/assets/products');
+const report = [];
 
-/** slug -> list of { src, out, crop? } */
-const MAP = {
-  milano: [
-    { src: '1/Minimalist Slazenger Sunglasses Advertisement.png', out: 'campaign.jpg' },
-    { src: '1/Slazenger Sunglasses in Architectural Light.png', out: 'angle.jpg' },
-    { src: '1/Sleek Slazenger Sunglasses Editorial Portrait.png', out: 'portrait-woman.jpg' },
-    { src: '1/Cinematic Slazenger Eyewear Portrait.png', out: 'portrait-man.jpg' },
-  ],
-  notte: [
-    { src: '2/Luxury JAKERSON Sunglasses Still Life.png', out: 'still-life.jpg' },
-    { src: '2/Premium JAKerson Sunglasses Triptych.png', out: 'angle.jpg', crop: [0, 0, 833, 1024] },
-    { src: '2/Premium JAKerson Sunglasses Triptych.png', out: 'front.jpg', crop: [839, 0, 697, 533] },
-    { src: '2/Premium JAKerson Sunglasses Triptych.png', out: 'hinge.jpg', crop: [839, 539, 697, 485] },
-  ],
-  cristallo: [
-    { src: '3/Crystal-Clear JAKERSON Eyewear.png', out: 'float.jpg' },
-    { src: '3/Transparent JAKERSON Eyewear Triptych.png', out: 'angle.jpg', crop: [0, 0, 806, 1024] },
-    { src: '3/Transparent JAKERSON Eyewear Triptych.png', out: 'front.jpg', crop: [812, 0, 724, 502] },
-    { src: '3/Transparent JAKERSON Eyewear Triptych.png', out: 'hinge.jpg', crop: [812, 508, 724, 516] },
-    { src: '3/JAKERSON Crystal Frames Editorial.png', out: 'editorial.jpg' },
-  ],
-  rosa: [
-    { src: '4/Rose Gold Eyewear Editorial Split View.png', out: 'angle.jpg', crop: [0, 0, 862, 1024] },
-    { src: '4/Rose Gold Eyewear Editorial Split View.png', out: 'standing.jpg', crop: [878, 0, 658, 1024] },
-  ],
-};
+async function loadSource(src) {
+  let img = sharp(path.join(RAW, src.file));
+  if (src.box) {
+    const [l, t, r, b] = src.box;
+    img = sharp(await img.extract({ left: l, top: t, width: r - l, height: b - t }).toBuffer());
+  }
+  if (src.rotate) img = sharp(await img.rotate(src.rotate).toBuffer());
+  const meta = await img.metadata();
+  return { img, w: meta.width, h: meta.height };
+}
 
-for (const [slug, items] of Object.entries(MAP)) {
+function cropBox(w, h, [rw, rh], [fx, fy], zoom) {
+  // Largest rect with ratio rw:rh that fits, shrunk by zoom, centred on focus.
+  let cw = w;
+  let ch = (w * rh) / rw;
+  if (ch > h) {
+    ch = h;
+    cw = (h * rw) / rh;
+  }
+  cw = Math.round(cw / zoom);
+  ch = Math.round(ch / zoom);
+  const left = Math.round(Math.min(Math.max(fx * w - cw / 2, 0), w - cw));
+  const top = Math.round(Math.min(Math.max(fy * h - ch / 2, 0), h - ch));
+  return { left, top, width: cw, height: ch };
+}
+
+for (const [slug, outputs] of Object.entries(PRODUCTS)) {
   const dir = path.join(OUT, slug);
+  await rm(dir, { recursive: true, force: true });
   await mkdir(dir, { recursive: true });
-  for (const item of items) {
-    let img = sharp(path.join(RAW, item.src));
-    if (item.crop) {
-      const [left, top, width, height] = item.crop;
-      img = img.extract({ left, top, width, height });
-    }
-    await img
-      .resize({ width: 2000, height: 2000, fit: 'inside', withoutEnlargement: true })
-      .jpeg({ quality: 88, mozjpeg: true })
-      .toFile(path.join(dir, item.out));
-    console.log('✓', slug, item.out);
+  for (const [name, slotName, src, focus, zoom] of outputs) {
+    const slot = SLOTS[slotName];
+    const { img, w, h } = await loadSource(src);
+    const box = cropBox(w, h, slot.ratio, focus, zoom);
+    const [tw, th] = slot.size;
+    const scale = tw / box.width;
+    let pipe = img.clone().extract(box).resize(tw, th, { kernel: 'lanczos3' });
+    if (scale > 1.15) pipe = pipe.sharpen({ sigma: 0.6, m1: 0.5, m2: 1.5 });
+    await pipe.jpeg({ quality: 90, mozjpeg: true, chromaSubsampling: '4:4:4' }).toFile(path.join(dir, `${name}.jpg`));
+    const longEdge = Math.max(box.width, box.height);
+    const ok = longEdge >= slot.minSource * 0.98;
+    report.push({ slug, name, slot: slotName, size: `${tw}×${th}`, crop: `${box.width}×${box.height}`, scale: scale.toFixed(2), ok });
+    console.log(`${ok ? '✓' : '!'} ${slug}/${name}.jpg  ${slotName} ${tw}×${th}  from ${box.width}×${box.height} (×${scale.toFixed(2)})`);
   }
 }
+
+const rows = report
+  .map((r) => `| ${r.slug} | \`${r.name}.jpg\` | ${r.slot} | ${r.size} | ${r.crop} | ×${r.scale} | ${r.ok ? '✅ meets standard' : '⚠️ upscaled — reshoot at higher resolution'} |`)
+  .join('\n');
+const flagged = report.filter((r) => !r.ok).length;
+await writeFile(
+  path.resolve('docs/IMAGE-REPORT.md'),
+  `# Image report\n\n_Generated by \`npm run images\` from \`scripts/image-spec.mjs\`. Do not edit by hand._\n\n` +
+    `${report.length} files · ${report.length - flagged} meet the standard · ${flagged} upscaled from smaller sources.\n\n` +
+    `| Product | File | Slot | Output | Source crop | Scale | Status |\n|---|---|---|---|---|---|---|\n${rows}\n\n` +
+    `Upscaled files are sharpened Lanczos enlargements of the brand's current photos. They are acceptable for the prototype, ` +
+    `but the final shoot must deliver sources at or above each slot's minimum (see docs/IMAGE-STANDARD.md).\n`,
+);
+console.log(`\n${report.length} files, ${flagged} below source standard → docs/IMAGE-REPORT.md`);

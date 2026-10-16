@@ -92,3 +92,21 @@ head yaw realistically and the frames are stylised. Phase 4 moves to 3D GLB fram
 **Context:** The client's mobile reference is an app-like storefront with a bottom nav and a bottom buy bar.
 **Decision:** On viewports under 1024 px, a floating ink tab bar (5 destinations). Product pages swap it for a buy bar with the live total. The header bag icon hides while the tab bar is shown.
 **Consequences:** Primary actions sit in thumb reach. Pages reserve bottom space through `body.has-bar`. New pages get the tab bar by default.
+
+### ADR-014 — Abar High for Persian (2026-10-16)
+
+**Context:** Persian text set in Vazirmatn felt loose and not fashion-like. The client supplied Abar (FontIran).
+**Decision:** Use Abar High for Persian at 400/600/700. Self-host woff2 only, limited by `unicode-range` to Persian/Arabic code points. Latin glyphs on Persian pages stay in Geist. Persian leading and sizes are set explicitly in the `:lang(fa)` tokens.
+**Consequences:** English pages never download it. **Licensing:** Abar is commercial. The files live in this public repo under `src/assets/fonts/abar/` with a notice. If the brand's licence forbids public hosting of the font files, make the repo private or serve the fonts from a private origin.
+
+### ADR-015 — Image Standard v1 with a generator (2026-10-16)
+
+**Context:** Product imagery looked inconsistent: mixed crops, mixed scales, close-ups used as card images.
+**Decision:** Fixed image slots with exact ratios and sizes: product shots 4:3, lifestyle 4:5, hero 16:9 and 9:16. Every slot is rendered by `npm run images` from a focal-point spec. Views request images by slot, and a generated report flags sources below the standard.
+**Consequences:** Images are consistent across the site, and a new photo shoot only needs a spec update. Current sources are small (≤1536 px), so most files are flagged as upscales until the final shoot.
+
+### ADR-016 — Image-led home page (2026-10-16)
+
+**Context:** Client feedback: the store must lead with images, not paragraphs; the hero overlay looked like "something stuck on the image".
+**Decision:** The hero shows images plus two buttons only. The headline moves into the next section above the product grid. A lookbook replaces the text-only statement. The per-product scenes are removed because the grid replaces them.
+**Consequences:** Shopping starts one scroll from the top. Copy is kept to section headers.

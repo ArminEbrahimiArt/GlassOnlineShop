@@ -1,6 +1,6 @@
 # Design System
 
-_Source of truth: `src/styles/tokens.css` (tokens) and `src/styles/global.css` (roles and primitives). Update them together with this file. Last updated: 2026-10-16 (Phase 1.1)._
+_Source of truth: `src/styles/tokens.css` (tokens) and `src/styles/global.css` (roles and primitives). Update them together with this file. Last updated: 2026-10-16 (Phase 1.2)._
 
 ## Principles
 
@@ -34,30 +34,51 @@ The lightbox uses a near-black `#0e0d0c` so photos read like a phone gallery.
 
 ## Typography
 
-**Fonts:** Geist for Latin, Geist Mono for codes, sizes and indices, and Vazirmatn for Persian. All variable and self-hosted. The stack `Geist → Vazirmatn` renders each script in its own face.
+**Fonts:**
+- **Geist** for Latin, and **Geist Mono** for codes, sizes and indices. Both are variable and self-hosted.
+- **Abar High** for Persian (FontIran, commercial, ADR-014). It is self-hosted at 400/600/700 and loaded only for Persian code points.
+- The stack is `Geist → Abar High`, so Latin inside Persian pages stays Geist.
 
-**Scale:** modular, ratio **1.25** (major third), body **16 px**. It is fluid between 360 px and 1440 px viewports.
+**Calibration:** luxury fashion e-commerce conventions (Celine, Saint Laurent, Bottega Veneta, Jacques Marie Mage):
+- small, confident type and restrained headlines
+- whitespace instead of size for hierarchy
+- tracked uppercase micro-labels in English
 
-| Token | Mobile → Desktop | Role class | Use |
-|---|---|---|---|
-| `--text-display` | 48 → 112 | `.t-display` | Product names on scenes, page heroes |
-| `--text-3xl` | 40 → 72 | `.t-h1` | Page titles, PDP name, hero headline |
-| `--text-2xl` | 32 → 48 | `.t-h2` | Section titles, statement |
-| `--text-xl` | 24 → 32 | `.t-h3` | Card/collection titles, measurements |
-| `--text-lg` | 20 → 24 | `.t-lead` | Leads, taglines, price |
-| `--text-md` | 18 | — | Emphasised list items |
-| `--text-base` | 16 | `.t-body` | Body (max 60ch) |
-| `--text-sm` | 14 | `.t-small` | UI text, buttons, secondary body |
-| `--text-xs` | 12 | `.t-caption`, `.mono` | Captions, meta, codes |
-| `--text-2xs` | 11 | `.label` | Overlines: uppercase, +0.12em |
+The scale has a ratio of about 1.2 and is fluid between 360 px and 1440 px.
 
-**Leading:** display 0.95, headings 1.1, lead 1.35, body 1.6.
-**Tracking:** display −0.04em, headings −0.025em, lead −0.01em, labels +0.12em.
-**Persian:** tracking is always 0, because tracking breaks Persian joining. Leading increases (display 1.3, headings 1.45, body 1.9), headings use weight 600–700, and labels drop uppercase.
+| Token | EN (mobile → desktop) | FA | Role class | Use |
+|---|---|---|---|---|
+| `--text-display` | 40 → 72 | same | `.t-display` | Rare: editorial page titles |
+| `--text-3xl` | 32 → 52 | same | `.t-h1` | Page titles, PDP product name |
+| `--text-2xl` | 26 → 36 | same | `.t-h2` | Section titles |
+| `--text-xl` | 20 → 26 | same | `.t-h3` | Sub-titles, measurements, band titles |
+| `--text-lg` | 17 → 19 | same | `.t-lead` | Leads, taglines, PDP price |
+| `--text-md` | 16 | 17 | — | Emphasised list items |
+| `--text-base` | 15 | 16 | `.t-body` | Body (max 62ch) |
+| `--text-sm` | 13 | 14 | `.t-small` | UI text, card name and price |
+| `--text-xs` | 12 | 13 | `.t-caption`, `.mono` | Captions, meta, codes |
+| `--text-2xs` | 11 | 12 | `.label`, `.btn` | Overlines, buttons, nav |
+
+**Leading:**
+
+| Style | EN | FA |
+|---|---|---|
+| Display | 1.0 | 1.25 |
+| Heading | 1.12 | 1.35 |
+| Lead | 1.4 | 1.6 |
+| Body | 1.6 | 1.8 |
+
+Persian leading is explicit because Abar's metrics (ascent+descent) are 1.8em.
+
+**Tracking (EN):** display −0.03em, headings −0.02em, labels +0.14em, buttons +0.1em. **Persian:** always 0.
+
+**Weights:** `--weight-heading` is 500 in English and 600 in Persian. Body is 400.
+
+**Case:** English labels, buttons and card names are UPPERCASE. Persian never changes case.
 
 **Rules:**
-- Use role classes, never raw `font-size` in components, unless it is a documented exception: the tab bar's 10 px labels and the badge's 10 px text.
-- Every section header goes through `<SectionHead>`: label → (8 px) → title → (16 px) → lead, then `--section-head` before the content.
+- Use role classes, never raw `font-size` in components, except the documented 10 px tab-bar labels and badges.
+- Every section header goes through `<SectionHead>`.
 
 ## Space & layout
 
@@ -100,13 +121,14 @@ Sizes are 16 inline, 18 in buttons, 20–21 for navigation and 24 in the lightbo
 
 | Component | Spec |
 |---|---|
-| **Button** `.btn` `--primary/--ghost/--light/--sm/--block` | 48 px tall (40 for `--sm`), `--radius-xs`, 14 px/500 text, 8 px icon gap |
+| **Button** `.btn` `--primary/--ghost/--light/--sm/--block` | 48 px tall (40 for `--sm`), `--radius-xs`. English: 11 px/500 UPPERCASE with +0.1em tracking. Persian: 14 px/600. 8 px icon gap |
+| **Icon button** `.icon-btn` | A centred 40 px square (44 px on touch), `--radius-xs`, with a square 7% ink hover tint on hover-capable devices only. Layout code may only toggle it with `display: none` or `display: inline-grid` (never flex) |
 | **Icon tile** | 36–48 px square, `--radius-xs`, 1 px `--line-strong` outline or a white glass fill over images |
 | **SectionHead** | label + `.t-h2` (`.t-h1` for page) + optional `.t-lead` + optional trailing link. Tones `ink` and `paper` |
 | **Header** | 64 / 72 px. Transparent over the hero with a soft top scrim, blurred paper once scrolled. Full-screen menu dialog with numbered links |
-| **Hero panel** (home) | Frosted glass card (paper 74% + 22 px blur, white hairline). Contains: counter and arrows → `.t-h1` headline (2nd line muted) → current product link → CTAs → progress segments on the bottom edge. Full width on mobile (kicker hidden under 600 px, try-on collapses to an icon); 600 px wide at bottom-start on desktop |
-| **ProductCard** | 4:5 stage with a second image on hover. Try-on tile at top-end, ink quick-add "+" tile at the bottom corner. Name and price in one row; stacked under 300 px (container query) |
-| **Product scene** (home) | 7-column gallery with thumbnail rail and 4-column info, alternating sides. `.t-display` name with an ⓘ / Buy / mirror trio |
+| **Hero** (home) | Full-bleed art-directed slideshow (16:9 on desktop, 9:16 on phones, see IMAGE-STANDARD). No text over the image: only two buttons per slide at the bottom centre (primary "Discover <name>" and a glass "Try on"), plus progress dots. They stack vertically under 480 px |
+| **ProductCard** | A contained unit: `--stone-50` surface, 1 px `--line` frame, `--radius`, with hover shadow and border. 4:3 stage (second image on hover). Info area separated by a hairline: UPPERCASE name and price on row 1, colour name and dots (current ringed) on row 2. Try-on tile at top-end and ink quick-add "+" at the stage's bottom corner. Ink "NEW" badge |
+| **Lookbook** (home) | Edge-to-edge 4:5 on-model portraits (2-up from 768 px), bottom scrim, label and product link |
 | **Lightbox** | Near-black full-screen dialog: counter, zoom hint, close; snap track; thumbnail strip; side arrows on desktop. Double-tap zooms to 2.5×, swipe down closes |
 | **TabBar** (< 1024) | Floating ink bar, 64 px, inset 12 px, `--radius-lg`. 5 items with icon and 10 px label; the active one is paper-coloured with a heavier stroke. The bag shows a nude count badge |
 | **Buy bar** (PDP < 1024) | Same geometry as the tab bar, white glass. Total label and live price → try-on tile → primary "Add to bag" |

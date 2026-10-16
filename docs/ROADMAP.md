@@ -8,7 +8,7 @@ Status key: ✅ done · 🟡 in progress · ⬜ not started
 
 | Item | Status |
 |---|---|
-| Astro project, tokens, global styles, self-hosted fonts (Geist, Geist Mono, Vazirmatn) | ✅ |
+| Astro project, tokens, global styles, self-hosted fonts (Geist, Geist Mono; Persian: Abar High since 1.2) | ✅ |
 | Bilingual EN / FA with RTL, language switch, Persian digits and prices | ✅ |
 | Header, full-screen menu, footer with newsletter | ✅ |
 | Home: hero slider, statement, 4 product scenes, anatomy hotspots, mirror CTA, collections rail, atelier teaser | ✅ |
@@ -20,6 +20,7 @@ Status key: ✅ done · 🟡 in progress · ⬜ not started
 | GitHub Pages CI deploy | ✅ |
 | Project documentation (this folder) | ✅ |
 | **1.1 refinement** (client review): Lucide icons, full-bleed hero + glass caption panel, near-square radii, type/spacing system, phone-style lightbox, mobile tab bar + buy bar + quick add, face-tracking v1.1 | ✅ |
+| **1.2 refinement** (second review): Abar High Persian font, luxury type scale, Image Standard + generator, image-led home, hero buttons only, contained product cards, icon hover fix | ✅ |
 | Collect feedback from the brand meeting → `docs/CHANGELOG.md` + backlog below | ⬜ |
 
 ## Phase 2 — Design refinement & real content ⬜
@@ -27,7 +28,8 @@ Status key: ✅ done · 🟡 in progress · ⬜ not started
 - Apply meeting feedback: palette, typography, layout and copy tone.
 - Real logo, which replaces the typographic wordmark.
 - Real product data: names, codes, measurements, prices, materials and stock (see `docs/CONTENT.md`).
-- Professional photography to the shot list in `CONTENT.md`, including front-view PNGs for the mirror.
+- Professional photography to the brief in `docs/IMAGE-STANDARD.md` (≥3000 px, Slazenger-branded, front-view PNGs for the mirror), then `npm run images`.
+- Confirm the Abar font licence covers web use and public hosting (ADR-014).
 - Real collections, atelier story and brand copy in both languages, reviewed by native editors.
 - More pages: Size guide, Store locator, Journal / lookbook, FAQ, Shipping & returns, Warranty, Contact, Legal.
 - Search overlay and wishlist.

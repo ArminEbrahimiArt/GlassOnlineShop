@@ -276,9 +276,11 @@ const active = (p: string) => route.replace(/\/$/, '') === p;
     }
   }
   @media (min-width: 1024px) {
-    .header__nav,
-    .header__mirror {
+    .header__nav {
       display: flex;
+    }
+    .header__mirror {
+      display: inline-grid;
     }
   }
 
