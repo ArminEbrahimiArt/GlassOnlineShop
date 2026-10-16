@@ -621,10 +621,15 @@ const gallery = p.images;
     color: var(--paper);
     box-shadow: var(--shadow-float);
     transform: translateY(140%);
-    transition: transform var(--dur) var(--ease-out);
+    visibility: hidden;
+    transition:
+      transform var(--dur) var(--ease-out),
+      visibility 0s linear var(--dur);
   }
   .buybar.is-on {
     transform: none;
+    visibility: visible;
+    transition: transform var(--dur) var(--ease-out);
   }
   .buybar__info {
     flex: 1;
